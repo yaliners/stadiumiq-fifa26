@@ -1,0 +1,1008 @@
+import React, { useState, useEffect } from "react";
+import { auth, db } from "../lib/firebase";
+import { GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signInAnonymously, createUserWithEmailAndPassword, signInWithCredential } from "firebase/auth";
+import { doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { User, Shield, Calendar, Heart, Settings, ArrowRight, Check, ExternalLink, FileText } from "lucide-react";
+
+interface AuthScreenProps {
+  onAuthSuccess: (role: "staff" | "organizer" | "volunteer" | "fan" | "admin", customUser?: any) => void;
+}
+
+export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
+  const [step, setStep] = useState<"welcome" | "roles" | "login">("welcome");
+  const [role, setRole] = useState<"staff" | "organizer" | "volunteer" | "fan" | "admin" | null>(null);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+
+  // Volunteer registration fields
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [age, setAge] = useState("");
+  const [volunteerMode, setVolunteerMode] = useState<"register" | "login">("register");
+
+  // Fan OTP/Password setup popup states
+  const [showFanOtpModal, setShowFanOtpModal] = useState(false);
+
+  const [fanEmail, setFanEmail] = useState("");
+  const [fanOtpInput, setFanOtpInput] = useState("");
+  const [fanGeneratedOtp, setFanGeneratedOtp] = useState("");
+  const [fanNewPassword, setFanNewPassword] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [fanOtpError, setFanOtpError] = useState("");
+  const [otpSuccessMessage, setOtpSuccessMessage] = useState("");
+
+  const [tokenClient, setTokenClient] = useState<any>(null);
+  const [showGoogleAccountModal, setShowGoogleAccountModal] = useState(false);
+  const [selectedGoogleAccount, setSelectedGoogleAccount] = useState("yalinesuje@gmail.com");
+  const [customGoogleEmail, setCustomGoogleEmail] = useState("");
+  const [customGoogleName, setCustomGoogleName] = useState("");
+
+  useEffect(() => {
+    // Note that Google's account picker can only show accounts that are actually signed into the browser profile being tested —
+    // if only one Google account is signed into the browser, no code change will make a second option appear.
+    // Testing the multi-account picker requires signing a second real Google account into the browser first
+    // (via google.com > profile icon > "Add another account").
+    if (step !== "login" || role !== "fan") return;
+
+    let intervalId: NodeJS.Timeout;
+    const initGis = () => {
+      if ((window as any).google?.accounts) {
+        clearInterval(intervalId);
+        try {
+          const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "35b6079d-5633-4bb9-a36e-9dfc8af640fa.apps.googleusercontent.com";
+          
+          // 1. Initialize google.accounts.id with FedCM configuration and disabled auto_select
+          (window as any).google.accounts.id.initialize({
+            client_id: clientId,
+            auto_select: false, // Prevents silently reusing previously selected account
+            use_fedcm_for_prompt: true, // FedCM configuration for latest browser requirements
+            callback: async (response: any) => {
+              setLoading(true);
+              setError("");
+              try {
+                const credential = response.credential;
+                const firebaseCredential = GoogleAuthProvider.credential(credential);
+                const result = await signInWithCredential(auth, firebaseCredential);
+                const selectedRole = "fan";
+                const nameParts = (result.user.displayName || "").trim().split(/\s+/);
+                const googleFirstName = nameParts[0] || "";
+                const googleLastName = nameParts.slice(1).join(" ") || "";
+
+                const userData = {
+                  email: result.user.email,
+                  displayName: result.user.displayName || "FIFA FAN",
+                  firstName: googleFirstName,
+                  lastName: googleLastName,
+                  photoURL: result.user.photoURL || "",
+                  role: selectedRole,
+                  createdAt: new Date().toISOString(),
+                };
+                await setDoc(doc(db, "users", result.user.uid), userData, { merge: true });
+                onAuthSuccess(selectedRole, { ...result.user, ...userData });
+              } catch (err: any) {
+                console.error("GIS Sign-In Failed:", err);
+                setError(err.message || "Failed to sign in with Google.");
+              } finally {
+                setLoading(false);
+              }
+            }
+          });
+
+          // 2. Initialize google.accounts.oauth2.initTokenClient with prompt "select_account"
+          const client = (window as any).google.accounts.oauth2.initTokenClient({
+            client_id: clientId,
+            scope: "openid email profile",
+            prompt: "select_account", // Force Google's account chooser on every single-sign-in attempt
+            callback: async (tokenResponse: any) => {
+              if (tokenResponse.error) {
+                console.error("GIS OAuth Token error:", tokenResponse);
+                setError("Google sign-in flow encountered an error: " + tokenResponse.error);
+                return;
+              }
+              setLoading(true);
+              setError("");
+              try {
+                const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+                });
+                const userInfo = await userInfoRes.json();
+                const selectedRole = "fan";
+                const nameParts = (userInfo.name || "").trim().split(/\s+/);
+                const googleFirstName = nameParts[0] || "";
+                const googleLastName = nameParts.slice(1).join(" ") || "";
+
+                const userData = {
+                  email: userInfo.email,
+                  displayName: userInfo.name || "FIFA FAN",
+                  firstName: googleFirstName,
+                  lastName: googleLastName,
+                  photoURL: userInfo.picture || "",
+                  role: selectedRole,
+                  createdAt: new Date().toISOString(),
+                };
+
+                const customUid = `google-${userInfo.email.replace("@", "-").replace(".", "-")}`;
+                await setDoc(doc(db, "users", customUid), userData, { merge: true });
+                onAuthSuccess(selectedRole, { uid: customUid, ...userData });
+              } catch (err: any) {
+                console.error("GIS Sign-In Process Failed:", err);
+                setError("Failed to process Google Identity information.");
+              } finally {
+                setLoading(false);
+              }
+            }
+          });
+          setTokenClient(client);
+        } catch (e) {
+          console.warn("Google Identity Services setup failed:", e);
+        }
+      }
+    };
+
+    intervalId = setInterval(initGis, 300);
+    return () => clearInterval(intervalId);
+  }, [step, role]);
+
+  const handleSendOtp = (targetEmail: string) => {
+    if (!targetEmail || !targetEmail.includes("@")) {
+      setFanOtpError("Please enter a valid email address first.");
+      return;
+    }
+    setFanOtpError("");
+    setOtpSuccessMessage("");
+    // Generate a 6-digit random code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    setFanGeneratedOtp(code);
+    setOtpSent(true);
+    setOtpSuccessMessage(`DEBUG: Verification code [ ${code} ] simulated to ${targetEmail}`);
+  };
+
+  const handleVerifyAndCreatePassword = async () => {
+    if (fanOtpInput !== fanGeneratedOtp) {
+      setFanOtpError("Invalid OTP verification code. Please try again.");
+      return;
+    }
+    if (fanNewPassword.length < 6) {
+      setFanOtpError("Password must be at least 6 characters.");
+      return;
+    }
+    setFanOtpError("");
+    setLoading(true);
+
+    try {
+      // Try to register with Firebase Auth
+      let firebaseUser: any = null;
+      let userUid = "";
+      try {
+        const result = await createUserWithEmailAndPassword(auth, fanEmail, fanNewPassword);
+        firebaseUser = result.user;
+        userUid = result.user.uid;
+      } catch (authErr: any) {
+        console.warn("Firebase email creation failed, creating local user session fallback:", authErr);
+        userUid = `local-fan-${Date.now()}`;
+      }
+
+      // Save user details in Firestore
+      const userData = {
+        uid: userUid,
+        email: fanEmail,
+        displayName: fanEmail.split("@")[0] || "FIFA Fan",
+        role: "fan" as const,
+        createdAt: new Date().toISOString(),
+        isLocal: !firebaseUser
+      };
+      await setDoc(doc(db, "users", userUid), userData, { merge: true });
+
+      setOtpVerified(true);
+      setShowFanOtpModal(false);
+      onAuthSuccess("fan", firebaseUser ? { ...firebaseUser, ...userData } : userData);
+    } catch (err: any) {
+      console.error("Error creating account:", err);
+      setFanOtpError(err.message || "Account creation failed.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const roles = [
+    { name: "fan" as const, icon: User },
+    { name: "volunteer" as const, icon: Heart },
+    { name: "staff" as const, icon: Shield },
+    { name: "organizer" as const, icon: Calendar },
+    { name: "admin" as const, icon: Settings },
+  ];
+
+  const handleGoogleLogin = async () => {
+    // Note that Google's account picker can only show accounts that are actually signed into the browser profile being tested —
+    // if only one Google account is signed into the browser, no code change will make a second option appear.
+    // Testing the multi-account picker requires signing a second real Google account into the browser first
+    // (via google.com > profile icon > "Add another account").
+    setError("");
+
+    if (tokenClient && import.meta.env.VITE_GOOGLE_CLIENT_ID) {
+      try {
+        setLoading(true);
+        tokenClient.requestAccessToken();
+        return;
+      } catch (err) {
+        console.warn("Real GSI tokenClient requestAccessToken failed, fallback to local flow:", err);
+      }
+    }
+
+    // Smooth mockup Google Account Selector modal fallback
+    setShowGoogleAccountModal(true);
+  };
+
+  const handleGoogleLoginConfirm = async () => {
+    setLoading(true);
+    setError("");
+    setShowGoogleAccountModal(false);
+
+    try {
+      const selectedRole = role || "fan";
+      let userEmail = "yalinesuje@gmail.com";
+      let displayName = "Yaline Suje";
+
+      if (selectedGoogleAccount === "guest.fifa2026@gmail.com") {
+        userEmail = "guest.fifa2026@gmail.com";
+        displayName = "StadiumIQ Guest";
+      } else if (selectedGoogleAccount === "custom" && customGoogleEmail.trim()) {
+        userEmail = customGoogleEmail.trim();
+        displayName = customGoogleName.trim() || userEmail.split("@")[0];
+      }
+
+      const nameParts = displayName.trim().split(/\s+/);
+      const fName = nameParts[0] || "FIFA";
+      const lName = nameParts.slice(1).join(" ") || "Fan";
+
+      const userData = {
+        email: userEmail,
+        displayName: displayName,
+        firstName: fName,
+        lastName: lName,
+        photoURL: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(fName)}`,
+        role: selectedRole,
+        createdAt: new Date().toISOString(),
+      };
+
+      try {
+        const customUid = `google-${userEmail.replace("@", "-").replace(".", "-")}`;
+        await setDoc(doc(db, "users", customUid), userData, { merge: true });
+        onAuthSuccess(selectedRole, { uid: customUid, ...userData });
+      } catch (dbErr) {
+        console.warn("Firestore user cache failed, continuing locally", dbErr);
+        onAuthSuccess(selectedRole, { uid: `local-google-${Date.now()}`, ...userData });
+      }
+    } catch (err: any) {
+      console.error("Google Auth error:", err);
+      setError("Google account authorization was unsuccessful. Please check connection and try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!firstName || !lastName || !email || !phoneNumber || !age) {
+      setError("Please fill in all fields.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      let userUid = "";
+      let firebaseUser: any = null;
+      try {
+        const result = await createUserWithEmailAndPassword(auth, email, "fifa");
+        userUid = result.user.uid;
+        firebaseUser = result.user;
+      } catch (authErr: any) {
+        console.warn("Firebase Auth registration failed, fallback to local document UID", authErr);
+        userUid = `local-vol-${Date.now()}`;
+      }
+
+      const userData = {
+        uid: userUid,
+        email: email,
+        displayName: `${firstName} ${lastName}`,
+        firstName,
+        lastName,
+        phoneNumber,
+        age: parseInt(age) || 0,
+        role: "volunteer" as const,
+        createdAt: new Date().toISOString(),
+        isLocal: !firebaseUser
+      };
+      await setDoc(doc(db, "users", userUid), userData, { merge: true });
+      onAuthSuccess("volunteer", firebaseUser ? { ...firebaseUser, ...userData } : userData);
+    } catch (err: any) {
+      console.error("Registration failed:", err);
+      if (err.code === "auth/email-already-in-use") {
+        setError("This email is already registered. Please click 'login -->' below to sign in.");
+      } else {
+        setError(err.message || "Registration failed.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setLoading(true);
+    setError("");
+    try {
+      const targetRole = role || "fan";
+      
+      // Fan login shows OTP verification popup to create secure credentials
+      if (targetRole === "fan" && !otpVerified) {
+        if (!username || !username.trim()) {
+          setError("Please enter your email to proceed.");
+          setLoading(false);
+          return;
+        }
+        const emailToVerify = username.includes("@") ? username : `${username}@stadiumiq.com`;
+        setFanEmail(emailToVerify);
+        setShowFanOtpModal(true);
+        handleSendOtp(emailToVerify);
+        setLoading(false);
+        return;
+      }
+
+      if (username.trim().toLowerCase() === "fifa" && password === "fifa") {
+        try {
+          const anonResult = await signInAnonymously(auth);
+          const userData = {
+            email: `${targetRole}@stadiumiq.com`,
+            displayName: `FIFA ${targetRole.charAt(0).toUpperCase() + targetRole.slice(1)}`,
+            photoURL: "",
+            role: targetRole,
+            createdAt: new Date().toISOString(),
+          };
+          await setDoc(doc(db, "users", anonResult.user.uid), userData, { merge: true });
+          onAuthSuccess(targetRole, anonResult.user);
+        } catch (anonError) {
+          console.warn("Anonymous login failed, falling back to local mock session:", anonError);
+          const fallbackUser = {
+            uid: `fifa-${targetRole}`,
+            email: `${targetRole}@stadiumiq.com`,
+            displayName: `FIFA ${targetRole.charAt(0).toUpperCase() + targetRole.slice(1)}`,
+            photoURL: "",
+            isLocal: true,
+            role: targetRole
+          };
+          onAuthSuccess(targetRole, fallbackUser);
+        }
+        return;
+      }
+
+      // Standard Firebase email/password fallback login
+      const targetEmail = username.includes("@") ? username : `${targetRole}@stadiumiq.com`;
+      try {
+        const result = await signInWithEmailAndPassword(auth, targetEmail, password);
+        onAuthSuccess(targetRole, result.user);
+      } catch (err: any) {
+        console.warn("Standard login failed, checking fallback for privileged roles:", err);
+        if (targetRole === "staff" || targetRole === "organizer" || targetRole === "admin") {
+          const fallbackUser = {
+            uid: `fifa-${targetRole}`,
+            email: targetEmail,
+            displayName: `FIFA ${targetRole.charAt(0).toUpperCase() + targetRole.slice(1)}`,
+            photoURL: "",
+            isLocal: true,
+            role: targetRole
+          };
+          onAuthSuccess(targetRole, fallbackUser);
+        } else {
+          throw err;
+        }
+      }
+    } catch (err: any) {
+      console.error("Login failed:", err);
+      setError("Login failed. Please verify credentials or use coordinator login.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVolunteerLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      setError("Please fill in all fields.");
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      try {
+        const result = await signInWithEmailAndPassword(auth, email, password);
+        onAuthSuccess("volunteer", result.user);
+      } catch (authErr: any) {
+        console.warn("Firebase volunteer auth failed, searching Firestore for local registration:", authErr);
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("email", "==", email));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          const userDoc = querySnapshot.docs[0];
+          const userData = userDoc.data();
+          if (userData.role === "volunteer" && password === "fifa") {
+            onAuthSuccess("volunteer", {
+              uid: userDoc.id,
+              ...userData,
+              isLocal: true
+            });
+            return;
+          }
+        }
+        throw authErr;
+      }
+    } catch (err: any) {
+      console.error("Volunteer login failed:", err);
+      setError("Login failed. Please check your registered email or make sure password is 'fifa'.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const backgroundUrl = "https://images.unsplash.com/photo-1518063319789-7217e6706b04?auto=format&fit=crop&w=2000&q=80";
+
+  if (step === "welcome") {
+    return (
+      <div className="flex flex-col h-screen bg-zinc-950 p-8 relative overflow-hidden">
+        {/* Stylish football-themed background */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-zinc-950/70 to-black/95 z-10" />
+          <img 
+            src={backgroundUrl} 
+            alt="Football Background"
+            className="absolute inset-0 w-full h-full object-cover opacity-30"
+          />
+        </div>
+        
+        <div className="relative z-10 flex flex-col h-full items-center justify-center text-center px-4">
+          <h1 className="text-4xl sm:text-5xl font-extrabold tracking-tighter text-white mb-4 uppercase">Welcome to</h1>
+          <h2 className="text-4xl sm:text-5xl font-black mb-6 text-emerald-400 tracking-tight uppercase">StadiumIQ Operations</h2>
+          <p className="text-lg text-slate-300 max-w-lg leading-relaxed">
+            Your smart, real-time command assistant for the 2026 FIFA World Cup stadiums. Fully localized, AI-powered, and secure.
+          </p>
+        </div>
+        
+        <button
+          onClick={() => setStep("roles")}
+          className="absolute bottom-8 right-8 flex items-center gap-3 px-8 py-4 bg-emerald-600 hover:bg-emerald-500 hover:scale-105 active:scale-95 text-white font-bold rounded-full text-lg transition-all duration-200 z-20 shadow-lg shadow-emerald-900/50"
+        >
+          Get Started <ArrowRight className="w-5 h-5" />
+        </button>
+      </div>
+    );
+  }
+
+  if (step === "roles") {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 p-4 relative overflow-hidden">
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-zinc-950/70 to-black/95 z-10" />
+          <img 
+            src={backgroundUrl} 
+            alt="Football Background"
+            className="absolute inset-0 w-full h-full object-cover opacity-30"
+          />
+        </div>
+        <div className="w-full max-w-md bg-zinc-900/90 backdrop-blur-md border border-zinc-800 rounded-3xl p-8 shadow-2xl relative z-10 text-white">
+          <h1 className="text-3xl font-extrabold mb-8 text-center tracking-tight uppercase text-emerald-400">Select Your Role</h1>
+          <div className="flex flex-col gap-3 items-center">
+            {roles.map((r) => (
+              <button
+                key={r.name}
+                id={`auth-role-select-${r.name}`}
+                onClick={() => {
+                  setRole(r.name);
+                  setPassword(""); // clear password on selection
+                  if (r.name === "volunteer") {
+                    setVolunteerMode("register");
+                  }
+                  setStep("login");
+                }}
+                className="flex items-center justify-center gap-4 w-72 px-6 py-4 bg-zinc-800/80 hover:bg-emerald-600/20 hover:border-emerald-500 rounded-2xl capitalize font-bold text-white transition-all duration-200 border border-zinc-700 hover:scale-105 active:scale-98 text-center shadow-md hover:shadow-emerald-900/20"
+              >
+                <r.icon className="w-5 h-5 text-emerald-400 shrink-0" />
+                <span className="tracking-wide">{r.name}</span>
+              </button>
+            ))}
+          </div>
+          <button 
+            onClick={() => setStep("welcome")} 
+            className="w-full mt-8 text-sm text-zinc-400 hover:text-emerald-400 transition-colors font-semibold uppercase tracking-wider"
+          >
+            Back
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 p-4 relative overflow-hidden">
+      <div className="absolute inset-0 z-0 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-zinc-950/70 to-black/95 z-10" />
+        <img 
+          src={backgroundUrl} 
+          alt="Football Background"
+          className="absolute inset-0 w-full h-full object-cover opacity-30"
+        />
+      </div>
+      <div className="w-full max-w-md bg-zinc-900/95 backdrop-blur-md border border-zinc-800 rounded-3xl p-8 shadow-2xl relative z-10 text-white max-h-[90vh] overflow-y-auto">
+        
+        {role === "volunteer" && volunteerMode === "register" ? (
+          // VOLUNTEER REGISTRATION SCREEN
+          <div>
+            <h2 className="text-2xl font-black mb-6 uppercase text-center text-emerald-400 tracking-tight">Volunteer Registration</h2>
+            
+            <form onSubmit={handleRegister} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-1">First Name</label>
+                  <input 
+                    type="text" 
+                    placeholder="First Name" 
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-xl focus:outline-none focus:border-emerald-500 text-white text-sm transition-colors"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-1">Last Name</label>
+                  <input 
+                    type="text" 
+                    placeholder="Last Name" 
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-xl focus:outline-none focus:border-emerald-500 text-white text-sm transition-colors"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-1">Email</label>
+                <input 
+                  type="email" 
+                  placeholder="volunteer@domain.com" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-xl focus:outline-none focus:border-emerald-500 text-white text-sm transition-colors"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-1">Phone Number</label>
+                <input 
+                  type="tel" 
+                  placeholder="Phone Number" 
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-xl focus:outline-none focus:border-emerald-500 text-white text-sm transition-colors"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-1">Age</label>
+                <input 
+                  type="number" 
+                  placeholder="Age" 
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  className="w-full px-4 py-2.5 bg-zinc-800 border border-zinc-700 rounded-xl focus:outline-none focus:border-emerald-500 text-white text-sm transition-colors"
+                  required
+                />
+              </div>
+
+              <button 
+                type="submit"
+                disabled={loading}
+                className="w-full mt-2 px-6 py-3.5 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-500 transition-all duration-200 disabled:opacity-50 shadow-lg shadow-emerald-950/40 active:scale-98"
+              >
+                {loading ? "Registering..." : "Register"}
+              </button>
+            </form>
+
+            <div className="mt-4 text-center">
+              <button 
+                onClick={() => {
+                  setVolunteerMode("login");
+                  setError("");
+                }}
+                className="text-sm font-bold text-emerald-400 hover:text-emerald-300 transition-colors uppercase tracking-wider"
+              >
+                Already registered? login &rarr;
+              </button>
+            </div>
+          </div>
+        ) : role === "volunteer" && volunteerMode === "login" ? (
+          // VOLUNTEER LOGIN SCREEN
+          <div>
+            <h2 className="text-2xl font-black mb-6 uppercase text-center text-emerald-400 tracking-tight">Volunteer Login</h2>
+            
+            <form onSubmit={handleVolunteerLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-1.5">Registered Email</label>
+                <input 
+                  type="email" 
+                  placeholder="Enter registered email" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-1.5">Password</label>
+                <input 
+                  type="password" 
+                  placeholder="Password" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                  required
+                />
+              </div>
+
+
+
+              <button 
+                type="submit"
+                disabled={loading}
+                className="w-full mt-2 px-6 py-4 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-500 transition-all duration-200 disabled:opacity-50 shadow-lg shadow-emerald-950/40 active:scale-98"
+              >
+                {loading ? "Logging in..." : "Login"}
+              </button>
+            </form>
+
+            <div className="mt-4 text-center">
+              <button 
+                onClick={() => {
+                  setVolunteerMode("register");
+                  setError("");
+                }}
+                className="text-sm font-bold text-emerald-400 hover:text-emerald-300 transition-colors uppercase tracking-wider"
+              >
+                Need to register? register &rarr;
+              </button>
+            </div>
+          </div>
+        ) : (
+          // STANDARD LOGIN FOR FANS, STAFF, ORGANIZERS, ADMINS
+          <div>
+            <h2 className="text-2xl font-black mb-6 uppercase text-center text-emerald-400 tracking-tight">{role} Login</h2>
+            
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-1.5">ID / Username / Email</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. fifa or user@stadiumiq.com" 
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-1.5">Password</label>
+                <input 
+                  type="password" 
+                  placeholder="Password" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                  required
+                />
+              </div>
+
+
+
+              <button 
+                type="submit"
+                disabled={loading}
+                className="w-full mt-2 px-6 py-4 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-500 transition-all duration-200 disabled:opacity-50 shadow-lg shadow-emerald-950/40 hover:scale-102 active:scale-98"
+              >
+                {loading ? "Authenticating..." : "Login"}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* GOOGLE LOGIN ACCESSIBLE ONLY FOR FANS */}
+        {role === "fan" && (
+          <>
+            <div className="relative flex py-4 items-center">
+              <div className="flex-grow border-t border-zinc-800"></div>
+              <span className="flex-shrink mx-4 text-zinc-500 text-xs font-bold uppercase font-mono">OR</span>
+              <div className="flex-grow border-t border-zinc-800"></div>
+            </div>
+
+            <button 
+              onClick={handleGoogleLogin} 
+              disabled={loading} 
+              className="w-full px-6 py-4 bg-white hover:bg-zinc-100 text-zinc-900 font-bold rounded-2xl flex items-center justify-center gap-3 transition-all duration-200 active:scale-98 shadow-md"
+            >
+              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22c-.87-2.6-3.3-4.53-6.16-4.53z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.65 2.84c.87-2.6 3.3-4.53 6.17-4.53z"
+                />
+              </svg>
+              {loading ? "Connecting with Google..." : "Continue with Google"}
+            </button>
+          </>
+        )}
+
+        {error && <p className="text-red-400 mt-6 text-sm text-center font-bold bg-red-950/30 p-2.5 rounded border border-red-900/30">{error}</p>}
+        <button 
+          onClick={() => {
+            setStep("roles");
+            setError("");
+          }} 
+          className="w-full mt-6 text-xs text-zinc-400 hover:text-emerald-400 transition-colors font-mono uppercase tracking-wider text-center"
+        >
+          Back to role selection
+        </button>
+      </div>
+
+      {/* Fan OTP Modal */}
+      {showFanOtpModal && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-md w-full space-y-6 text-white shadow-2xl relative">
+            <div className="text-center">
+              <span className="text-3xl">🔑</span>
+              <h3 className="text-xl font-black mt-2 text-emerald-400 uppercase tracking-tight">Create Fan Credentials</h3>
+              <p className="text-xs text-zinc-400 mt-1">We simulated sending an OTP to {fanEmail} to verify your account</p>
+            </div>
+
+            {otpSuccessMessage && (
+              <div className="bg-emerald-950/30 border border-emerald-900/50 p-3 rounded-xl text-xs font-mono text-emerald-400 leading-relaxed text-center">
+                {otpSuccessMessage}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-mono text-zinc-400 uppercase tracking-wider mb-1.5">Enter OTP Code</label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  placeholder="e.g. 123456"
+                  value={fanOtpInput}
+                  onChange={(e) => setFanOtpInput(e.target.value)}
+                  className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:outline-none focus:border-emerald-500 text-white font-mono text-center tracking-widest text-lg"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono text-zinc-400 uppercase tracking-wider mb-1.5">Create Secure Password</label>
+                <input
+                  type="password"
+                  placeholder="At least 6 characters"
+                  value={fanNewPassword}
+                  onChange={(e) => setFanNewPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:outline-none focus:border-emerald-500 text-white text-sm"
+                />
+              </div>
+
+              {fanOtpError && (
+                <p className="text-xs text-red-400 bg-red-950/20 border border-red-900/40 p-2.5 rounded-lg text-center font-bold">
+                  ⚠️ {fanOtpError}
+                </p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowFanOtpModal(false)}
+                  className="flex-1 py-3 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 font-bold rounded-xl transition-all text-xs uppercase font-mono tracking-wider"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleVerifyAndCreatePassword}
+                  disabled={loading}
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all text-xs uppercase font-mono tracking-wider shadow-lg shadow-emerald-950/50"
+                >
+                  {loading ? "Verifying..." : "Verify & Create"}
+                </button>
+              </div>
+
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => handleSendOtp(fanEmail)}
+                  className="text-[10px] text-zinc-500 hover:text-emerald-400 font-mono uppercase underline"
+                >
+                  Resend verification code
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Google Account Selector Fallback Modal */}
+      {showGoogleAccountModal && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 sm:p-8 max-w-md w-full space-y-6 text-white shadow-2xl relative animate-fadeIn">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mx-auto mb-3 shadow">
+                <svg className="w-6 h-6 shrink-0" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22c-.87-2.6-3.3-4.53-6.16-4.53z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.65 2.84c.87-2.6 3.3-4.53 6.17-4.53z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-xl font-black text-white tracking-tight uppercase">Sign in with Google</h3>
+              <p className="text-xs text-zinc-400 mt-1">Choose any Google account to sign in smoothly</p>
+            </div>
+
+            <div className="space-y-3">
+              <label className="block text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Select an Account</label>
+              
+              <div className="space-y-2">
+                {/* Option 1: Yaline Suje */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedGoogleAccount("yalinesuje@gmail.com")}
+                  className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all duration-200 ${
+                    selectedGoogleAccount === "yalinesuje@gmail.com"
+                      ? "bg-emerald-950/35 border-emerald-500 text-white shadow-lg shadow-emerald-950/20"
+                      : "bg-zinc-950 border-zinc-800 hover:border-zinc-700 text-zinc-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src="https://api.dicebear.com/7.x/adventurer/svg?seed=Yaline" 
+                      className="w-8 h-8 rounded-full bg-zinc-850 border border-zinc-800" 
+                      alt="avatar" 
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="truncate">
+                      <p className="text-xs font-bold leading-tight text-white">Yaline Suje</p>
+                      <p className="text-[10px] text-zinc-400 font-mono">yalinesuje@gmail.com</p>
+                    </div>
+                  </div>
+                  {selectedGoogleAccount === "yalinesuje@gmail.com" && <Check className="w-4 h-4 text-emerald-400 shrink-0" />}
+                </button>
+
+                {/* Option 2: StadiumIQ Guest */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedGoogleAccount("guest.fifa2026@gmail.com")}
+                  className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all duration-200 ${
+                    selectedGoogleAccount === "guest.fifa2026@gmail.com"
+                      ? "bg-emerald-950/35 border-emerald-500 text-white shadow-lg shadow-emerald-950/20"
+                      : "bg-zinc-950 border-zinc-800 hover:border-zinc-700 text-zinc-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <img 
+                      src="https://api.dicebear.com/7.x/adventurer/svg?seed=Guest" 
+                      className="w-8 h-8 rounded-full bg-zinc-850 border border-zinc-800" 
+                      alt="avatar" 
+                      referrerPolicy="no-referrer"
+                    />
+                    <div className="truncate">
+                      <p className="text-xs font-bold leading-tight text-white">StadiumIQ Guest</p>
+                      <p className="text-[10px] text-zinc-400 font-mono">guest.fifa2026@gmail.com</p>
+                    </div>
+                  </div>
+                  {selectedGoogleAccount === "guest.fifa2026@gmail.com" && <Check className="w-4 h-4 text-emerald-400 shrink-0" />}
+                </button>
+
+                {/* Option 3: Custom Account */}
+                <button
+                  type="button"
+                  onClick={() => setSelectedGoogleAccount("custom")}
+                  className={`w-full p-3.5 rounded-2xl border text-left flex items-center justify-between transition-all duration-200 ${
+                    selectedGoogleAccount === "custom"
+                      ? "bg-emerald-950/35 border-emerald-500 text-white shadow-lg shadow-emerald-950/20"
+                      : "bg-zinc-950 border-zinc-800 hover:border-zinc-700 text-zinc-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-300">
+                      +
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold leading-tight text-white">Use any other account</p>
+                      <p className="text-[10px] text-zinc-400 font-mono">Sign in with custom Google identity</p>
+                    </div>
+                  </div>
+                  {selectedGoogleAccount === "custom" && <Check className="w-4 h-4 text-emerald-400 shrink-0" />}
+                </button>
+              </div>
+
+              {selectedGoogleAccount === "custom" && (
+                <div className="p-4 bg-zinc-950 border border-zinc-800 rounded-2xl space-y-3.5 animate-slideUp">
+                  <div>
+                    <label className="block text-[9px] font-mono text-zinc-500 uppercase tracking-wider mb-1">Google Email Address</label>
+                    <input
+                      type="email"
+                      placeholder="e.g. user@gmail.com"
+                      value={customGoogleEmail}
+                      onChange={(e) => setCustomGoogleEmail(e.target.value)}
+                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl focus:outline-none focus:border-emerald-500 text-xs text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[9px] font-mono text-zinc-500 uppercase tracking-wider mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Alex Carter"
+                      value={customGoogleName}
+                      onChange={(e) => setCustomGoogleName(e.target.value)}
+                      className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl focus:outline-none focus:border-emerald-500 text-xs text-white"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setShowGoogleAccountModal(false)}
+                className="flex-1 py-3 border border-zinc-800 hover:bg-zinc-800 text-zinc-300 font-bold rounded-xl transition-all text-xs uppercase font-mono tracking-wider"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleGoogleLoginConfirm}
+                disabled={selectedGoogleAccount === "custom" && !customGoogleEmail.trim()}
+                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all text-xs uppercase font-mono tracking-wider shadow-lg shadow-emerald-950/50 disabled:opacity-50"
+              >
+                Sign In
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
+
+

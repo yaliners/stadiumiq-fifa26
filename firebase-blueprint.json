@@ -1,0 +1,41 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile in StadiumIQ",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique identifier for the user" },
+        "email": { "type": "string", "description": "User email address" },
+        "displayName": { "type": "string", "description": "Display name of the user" },
+        "firstName": { "type": "string", "description": "First name of the user" },
+        "lastName": { "type": "string", "description": "Last name of the user" },
+        "role": { "type": "string", "enum": ["staff", "organizer", "volunteer", "fan", "admin"], "description": "System role of the user" },
+        "phoneNumber": { "type": "string", "description": "Phone number" },
+        "age": { "type": "integer", "description": "Age of the user" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Creation timestamp" }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "System and administrative activity logs",
+      "type": "object",
+      "properties": {
+        "action": { "type": "string", "description": "The action that occurred" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "Timestamp of the activity" }
+      },
+      "required": ["action", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles collection"
+    },
+    "/activity_logs/{logId}": {
+      "schema": "ActivityLog",
+      "description": "System wide operations audit trail"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "StadiumIQ",
+  "description": "Operations console for the FIFA World Cup 2026 smart stadium featuring real-time AI grounded query answers, operations telemetry, and localized services.",
+  "requestFramePermissions": ["geolocation", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

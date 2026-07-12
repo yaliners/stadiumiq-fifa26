@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net (Default Deny Catch-all)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role'])
+        && data.keys().size() >= 3
+        && data.uid is string
+        && data.uid.size() <= 128
+        && data.email is string
+        && data.email.size() <= 256
+        && data.role is string
+        && (data.role == 'staff' || data.role == 'organizer' || data.role == 'volunteer' || data.role == 'fan' || data.role == 'admin');
+    }
+
+    function isValidActivityLog(data) {
+      return data.keys().hasAll(['action', 'timestamp'])
+        && data.keys().size() == 2
+        && data.action is string
+        && data.action.size() <= 500;
+    }
+
+    // 2. User Profiles
+    match /users/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && (userId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
+      allow list: if (isSignedIn() && resource.data.uid == request.auth.uid) || resource.data.role == 'volunteer';
+      allow create, update: if isSignedIn() && isValidId(userId) && userId == request.auth.uid && isValidUser(incoming());
+      allow delete: if isSignedIn() && isValidId(userId) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // 3. Activity Logs
+    match /activity_logs/{logId} {
+      allow get: if isSignedIn() && isValidId(logId);
+      allow list: if isSignedIn() && resource.data.action is string;
+      allow create: if isSignedIn() && isValidId(logId) && isValidActivityLog(incoming());
+      allow update, delete: if isSignedIn() && isValidId(logId) && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+  }
+}
