@@ -54,7 +54,8 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       if ((window as any).google?.accounts) {
         clearInterval(intervalId);
         try {
-          const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "35b6079d-5633-4bb9-a36e-9dfc8af640fa.apps.googleusercontent.com";
+          const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
+          if (!clientId) return;
           
           // 1. Initialize google.accounts.id with FedCM configuration and disabled auto_select
           (window as any).google.accounts.id.initialize({

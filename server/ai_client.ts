@@ -1,14 +1,9 @@
 import { GoogleGenAI, Type, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { safeDbQuery, dbAll, dbGet } from "./db";
 
-// Initialize the Gemini SDK Client with standard AI Studio Build header
+// Initialize the Gemini SDK Client
 export const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
-  httpOptions: {
-    headers: {
-      "User-Agent": "aistudio-build",
-    },
-  },
 });
 
 // A simple in-memory sliding window rate limiter

@@ -1,8 +1,8 @@
 # StadiumIQ — FIFA World Cup 2026 Smart Stadium & Operations
 
-[![CI / Test Status](https://img.shields.io/badge/CI%20/%20Tests-passing-brightgreen)](https://github.com/google-ai-studio/stadiumiq)
-[![Coverage](https://img.shields.io/badge/Coverage-94%25-brightgreen)](https://github.com/google-ai-studio/stadiumiq)
-[![WCAG AA Compliant](https://img.shields.io/badge/WCAG%20AA-compliant-blue)](https://github.com/google-ai-studio/stadiumiq)
+[![CI / Test Status](https://img.shields.io/badge/CI%20/%20Tests-passing-brightgreen)](https://github.com/stadiumiq/stadiumiq)
+[![Coverage](https://img.shields.io/badge/Coverage-94%25-brightgreen)](https://github.com/stadiumiq/stadiumiq)
+[![WCAG AA Compliant](https://img.shields.io/badge/WCAG%20AA-compliant-blue)](https://github.com/stadiumiq/stadiumiq)
 
 StadiumIQ is a highly optimized, fully responsive, and accessible generative AI tournament operations assistant designed for the **FIFA World Cup 2026**. Built as a robust single-branch repository, StadiumIQ integrates local, deterministic pattern matching with deep Google Gemini function-calling capabilities. This ensures maximum speed, absolute data reliability, and zero exposure of sensitive telemetry.
 
