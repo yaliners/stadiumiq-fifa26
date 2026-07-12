@@ -127,6 +127,23 @@ StadiumIQ is fully synchronized with **Google AntiGravity**, a high-performance,
 
 ---
 
+## 🔑 Google Sign-In Flow & Account Selection
+StadiumIQ features a robust Google Sign-In integration for fans, fully aligned with Google's latest security guidelines:
+- **Forced Account Chooser:** Configured with `prompt: "select_account"` and `auto_select: false` to ensure Google's account chooser is forced on every sign-in attempt rather than silently reusing previous sessions.
+- **FedCM Compatibility:** Supports the latest Chrome and browser updates with Federated Credential Management (`use_fedcm_for_prompt: true`) enabled natively.
+- **Multi-Account Mock Fallback:** Includes a elegant built-in mock account chooser pop-up that allows testers to evaluate multi-account selections (e.g. Guest profiles or entering any custom Google account details dynamically) when not running in a fully-configured GCP OAuth client environment.
+
+> [!NOTE]
+> Google's official account picker can only display accounts that are actively signed into the browser profile being tested. If only a single Google account is logged in, no code change can force a second option to appear. To test genuine multi-account pickers, please sign a second Google account into the browser beforehand.
+
+---
+
+## 🎨 Immersive Design & Custom Favicon
+- **Inline SVG Emoji Favicon:** The applet loads a dynamic, high-contrast inline SVG data URI favicon featuring a detailed stadium emoji (`🏟️`) inside the HTML `<head>`, providing instant visual polish without extra image file dependencies or complex bundling.
+- **Title Alignment:** Maintained strict branding consistency with the page header reading **"StadiumIQ - FIFA 2026 Operations"**.
+
+---
+
 ## 🔐 Role-Based Access Control (RBAC) & Secure Demo
 
 To safeguard privileged operations, StadiumIQ enforces client-side role-based access control. Switching between operational personas (e.g., **Staff**, **Organizer**, and **Volunteer** dashboards) prompts a secure validation gate:
