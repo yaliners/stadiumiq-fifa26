@@ -61,8 +61,11 @@ import { ChatInterface } from "./components/ChatInterface";
 import en from "./locales/en.json";
 import es from "./locales/es.json";
 import fr from "./locales/fr.json";
+import de from "./locales/de.json";
+import pt from "./locales/pt.json";
+import it from "./locales/it.json";
 
-const locales: Record<string, any> = { en, es, fr };
+const locales: Record<string, any> = { en, es, fr, de, pt, it };
 
 function getTeamFlag(teamName: string) {
   const flags: Record<string, string> = {
@@ -355,7 +358,7 @@ export default function App() {
   const [user, setUser] = useState<any | null>(null);
   const [role, setRole] = useState<"staff" | "organizer" | "volunteer" | "fan" | "admin" | null>(null);
   const [loadingRole, setLoadingRole] = useState(false);
-  const [locale, setLocale] = useState<"en" | "es" | "fr">("en");
+  const [locale, setLocale] = useState<"en" | "es" | "fr" | "de" | "pt" | "it">("en");
   const [persona, setPersonaState] = useState<"staff" | "organizer" | "volunteer" | "fan" | "admin">("fan");
 
   const [isRoleVerified, setIsRoleVerified] = useState(false);

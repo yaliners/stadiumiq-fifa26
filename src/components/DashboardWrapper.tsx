@@ -2,8 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Accessibility, Shield, Calendar, Users, Award, Settings, User, Heart, X, HelpCircle, MapPin, Mail, Globe, Palette, ShieldAlert, Info } from "lucide-react";
 
 interface DashboardWrapperProps {
-  locale: "en" | "es" | "fr";
-  setLocale: (lang: "en" | "es" | "fr") => void;
+  locale: "en" | "es" | "fr" | "de" | "pt" | "it";
+  setLocale: (lang: "en" | "es" | "fr" | "de" | "pt" | "it") => void;
   persona: "staff" | "organizer" | "volunteer" | "fan" | "admin";
   setPersona: (p: "staff" | "organizer" | "volunteer" | "fan" | "admin") => void;
   accessibilityMode: boolean;
@@ -570,7 +570,7 @@ export function DashboardWrapper({
                   <Globe className="w-3.5 h-3.5 text-emerald-400" /> Locale Translation
                 </label>
                 <div className="grid grid-cols-3 gap-2">
-                  {(["en", "es", "fr"] as const).map((lang) => (
+                  {(["en", "es", "fr", "de", "pt", "it"] as const).map((lang) => (
                     <button
                       key={lang}
                       onClick={() => setLocale(lang)}
@@ -580,7 +580,7 @@ export function DashboardWrapper({
                           : "bg-zinc-800/50 hover:bg-zinc-800 border-zinc-700/60"
                       }`}
                     >
-                      {lang === "en" ? "English" : lang === "es" ? "Español" : "Français"}
+                      {lang === "en" ? "English" : lang === "es" ? "Español" : lang === "fr" ? "Français" : lang === "de" ? "Deutsch" : lang === "pt" ? "Português" : "Italiano"}
                     </button>
                   ))}
                 </div>
