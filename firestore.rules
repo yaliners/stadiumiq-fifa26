@@ -20,5 +20,10 @@ service cloud.firestore {
     match /activity_logs/{logId} {
       allow read, write: if true;
     }
+
+    // 4. Matches - allow public read/write to support schedule updates
+    match /matches/{matchId} {
+      allow read, write: if true;
+    }
   }
 }

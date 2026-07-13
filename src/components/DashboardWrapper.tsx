@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Accessibility, Shield, Calendar, Users, Award, Settings, User, Heart, X, HelpCircle, MapPin, Mail, Globe, Palette, ShieldAlert, Info } from "lucide-react";
+import { Accessibility, Shield, Calendar, Users, Award, Settings, User, Heart, X, HelpCircle, MapPin, Mail, Globe, Palette, ShieldAlert, Info, Edit, Check, Eye, EyeOff } from "lucide-react";
+import { db, auth } from "../lib/firebase";
+import { doc, setDoc } from "firebase/firestore";
 
 interface DashboardWrapperProps {
   locale: "en" | "es" | "fr" | "de" | "pt" | "it";
@@ -21,6 +23,7 @@ interface DashboardWrapperProps {
   wsConnected?: boolean;
   handleLogout: () => void;
   currentUser?: any;
+  onUpdateProfile?: (updatedUser: any) => void;
 }
 
 export function DashboardWrapper({
@@ -42,7 +45,8 @@ export function DashboardWrapper({
   stadiums,
   wsConnected = true,
   handleLogout,
-  currentUser
+  currentUser,
+  onUpdateProfile
 }: DashboardWrapperProps) {
   const [loginModal, setLoginModal] = useState<{ isOpen: boolean; role: 'staff' | 'organizer' | 'volunteer' | 'admin' | null }>({ isOpen: false, role: null });
   const [passcode, setPasscode] = useState("");
@@ -52,10 +56,51 @@ export function DashboardWrapper({
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
+
+  // Profile Edit fields
+  const [isEditing, setIsEditing] = useState(false);
+  const [editDisplayName, setEditDisplayName] = useState("");
+  const [editFirstName, setEditFirstName] = useState("");
+  const [editLastName, setEditLastName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editPhoneNumber, setEditPhoneNumber] = useState("");
+  const [editAge, setEditAge] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+
+  useEffect(() => {
+    setAvatarFailed(false);
+  }, [currentUser?.photoURL]);
+
+  useEffect(() => {
+    if (showProfileModal && currentUser) {
+      setEditDisplayName(currentUser.displayName || "");
+      setEditFirstName(currentUser.firstName || "");
+      setEditLastName(currentUser.lastName || "");
+      setEditEmail(currentUser.email || "");
+      setEditPhoneNumber(currentUser.phoneNumber || "");
+      setEditAge(currentUser.age !== undefined && currentUser.age !== null ? String(currentUser.age) : "");
+      setEditPassword(currentUser.password || "");
+      setSaveError("");
+      setSaveSuccess(false);
+      setIsEditing(false);
+    }
+  }, [showProfileModal, currentUser]);
   
   // Settings customization
   const [stadiumTheme, setStadiumTheme] = useState<"standard" | "light">("standard");
   const [colorAccent, setColorAccent] = useState<"emerald" | "purple" | "cyan" | "amber" | "rose">("emerald");
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Real-time clock update
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Load color accent and theme from localStorage
   useEffect(() => {
@@ -73,6 +118,83 @@ export function DashboardWrapper({
   const handleThemeChange = (theme: typeof stadiumTheme) => {
     setStadiumTheme(theme);
     localStorage.setItem("stadiumiq_theme", theme);
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaveLoading(true);
+    setSaveError("");
+    setSaveSuccess(false);
+
+    try {
+      const userId = currentUser?.uid || "fifa-admin-9x2";
+      const updatedUserFields = {
+        displayName: editDisplayName || currentUser?.displayName || "FIFA User",
+        firstName: editFirstName,
+        lastName: editLastName,
+        email: editEmail || currentUser?.email || "",
+        phoneNumber: editPhoneNumber,
+        age: editAge ? Number(editAge) : null,
+        password: editPassword || null,
+        role: currentUser?.role || persona || "fan"
+      };
+
+      // 1. Save to Firestore
+      const userRef = doc(db, "users", userId);
+      await setDoc(userRef, updatedUserFields, { merge: true });
+
+      // 2. Try to update Firebase Auth if logged in
+      if (auth.currentUser) {
+        try {
+          const { updateProfile } = await import("firebase/auth");
+          await updateProfile(auth.currentUser, {
+            displayName: editDisplayName || currentUser?.displayName || "FIFA User"
+          });
+        } catch (authErr) {
+          console.warn("Auth display name update failed:", authErr);
+        }
+
+        // Try updating email in Firebase Auth if it changed and is valid
+        if (editEmail && editEmail !== auth.currentUser.email && editEmail.includes("@")) {
+          try {
+            const { updateEmail } = await import("firebase/auth");
+            await updateEmail(auth.currentUser, editEmail);
+          } catch (authErr) {
+            console.warn("Auth email update failed (requires recent login):", authErr);
+          }
+        }
+
+        // Try updating password in Firebase Auth if it was changed
+        if (editPassword && editPassword !== currentUser?.password && editPassword.length >= 6) {
+          try {
+            const { updatePassword } = await import("firebase/auth");
+            await updatePassword(auth.currentUser, editPassword);
+          } catch (authErr) {
+            console.warn("Auth password update failed (requires recent login):", authErr);
+          }
+        }
+      }
+
+      // 3. Notify parent component to update user state
+      if (onUpdateProfile) {
+        onUpdateProfile({
+          ...currentUser,
+          ...updatedUserFields,
+          uid: userId
+        });
+      }
+
+      setSaveSuccess(true);
+      setTimeout(() => {
+        setIsEditing(false);
+        setSaveSuccess(false);
+      }, 1500);
+    } catch (err: any) {
+      console.error("Error saving profile:", err);
+      setSaveError(err.message || "Failed to save profile. Please try again.");
+    } finally {
+      setSaveLoading(false);
+    }
   };
 
   const handlePersonaClick = async (p: "staff" | "organizer" | "volunteer" | "fan" | "admin") => {
@@ -116,9 +238,9 @@ export function DashboardWrapper({
                 : "border-[#27272a] bg-[#09090b]/95 backdrop-blur-md"
           }`}
         >
-          <div className="max-w-7xl mx-auto px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="max-w-7xl mx-auto px-6 py-4 flex flex-row flex-wrap items-center justify-between gap-x-6 gap-y-4">
             {/* Logo & Branding (Left Side) */}
-            <div className="flex items-center gap-4 w-full md:w-auto">
+            <div className="flex items-center gap-4 flex-1 min-w-[280px]">
               <div 
                 id="brand-icon-badge"
                 className={`w-10 h-10 flex items-center justify-center rounded-lg transition-all shrink-0 ${
@@ -139,12 +261,12 @@ export function DashboardWrapper({
                   {persona === "admin" ? "A" : persona === "organizer" ? "O" : persona === "volunteer" ? "V" : persona === "fan" ? "F" : "S"}
                 </span>
               </div>
-              <div>
-                <h1 id="app-main-title" className={`text-lg font-bold tracking-tight uppercase flex items-center gap-2 leading-tight ${stadiumTheme === "light" ? "text-slate-900" : "text-white"}`}>
-                  {t.title || "StadiumIQ"}
+              <div className="flex-1 min-w-0">
+                <h1 id="app-main-title" className={`text-lg font-bold tracking-tight uppercase flex flex-wrap items-center gap-2 leading-tight ${stadiumTheme === "light" ? "text-slate-900" : "text-white"}`}>
+                  <span className="truncate">{t.title || "StadiumIQ"}</span>
                   <span 
                     id="role-status-badge"
-                    className={`text-[9px] px-1.5 py-0.5 rounded uppercase font-mono font-bold border ${
+                    className={`text-[9px] px-1.5 py-0.5 rounded uppercase font-mono font-bold border shrink-0 ${
                       accessibilityMode 
                         ? "bg-white text-black border-white" 
                         : persona === "admin"
@@ -161,10 +283,18 @@ export function DashboardWrapper({
                     {persona === "admin" ? "ADMIN MODE" : persona === "organizer" ? (t.active_role_organizer || "ORGANIZER MODE") : persona === "volunteer" ? (t.active_role_volunteer || "VOLUNTEER MODE") : persona === "fan" ? (t.active_role_fan || "FAN MODE") : (t.active_role_staff || "STAFF MODE")}
                   </span>
                 </h1>
-                <p id="app-main-subtitle" className={`text-[10px] font-mono leading-none tracking-wider uppercase mt-1 ${
+                <p id="app-main-subtitle" className={`text-[10px] font-mono leading-none tracking-wider uppercase mt-1 truncate ${
                   accessibilityMode ? "text-white" : "text-[#71717a]"
                 }`}>
                   {t.subtitle || "Smart Stadium & Operations"}
+                </p>
+              </div>
+              <div className="flex flex-col border-l border-[#27272a] pl-3 ml-2 sm:pl-4 sm:ml-4 shrink-0 overflow-hidden">
+                <p className={`text-[9px] sm:text-[10px] font-mono font-bold leading-none ${stadiumTheme === "light" ? "text-slate-900" : "text-white"}`}>
+                  {currentTime.toLocaleTimeString("en-GB", { timeZone: "UTC" })} UTC
+                </p>
+                <p className="text-[8px] sm:text-[9px] text-[#71717a] font-mono uppercase mt-0.5 whitespace-nowrap">
+                  {currentTime.toLocaleDateString("en-GB", { timeZone: "UTC", weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
                 </p>
               </div>
             </div>
@@ -224,12 +354,13 @@ export function DashboardWrapper({
                   className={`flex items-center gap-2 hover:scale-105 active:scale-95 transition-all p-1 rounded-full border ${stadiumTheme === "light" ? "border-slate-300 hover:border-emerald-500 bg-slate-100" : "border-zinc-800 hover:border-emerald-500 bg-zinc-950"}`}
                   title="Open user profile menu"
                 >
-                  {currentUser?.photoURL ? (
+                  {currentUser?.photoURL && !avatarFailed ? (
                     <img 
                       src={currentUser.photoURL} 
                       alt="User avatar" 
                       className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover shrink-0"
                       referrerPolicy="no-referrer"
+                      onError={() => setAvatarFailed(true)}
                     />
                   ) : (
                     <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-600 flex items-center justify-center font-black text-white text-xs shrink-0">
@@ -464,26 +595,30 @@ export function DashboardWrapper({
       
       {/* 1. PROFILE MODAL */}
       {showProfileModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-          <div className={`w-full max-w-md rounded-3xl p-6 border shadow-2xl relative ${stadiumTheme === "light" ? "bg-white border-slate-200 text-slate-800" : "bg-zinc-900 border-zinc-800 text-white"}`}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn animate-duration-200">
+          <div className={`w-full max-w-md rounded-3xl p-6 border shadow-2xl relative max-h-[85vh] overflow-y-auto scrollbar-thin scrollbar-thumb-zinc-800 ${stadiumTheme === "light" ? "bg-white border-slate-200 text-slate-800" : "bg-zinc-900 border-zinc-800 text-white"}`}>
             <button 
-              onClick={() => setShowProfileModal(false)}
+              onClick={() => {
+                setShowProfileModal(false);
+                setIsEditing(false);
+              }}
               className="absolute top-4 right-4 p-1 rounded-full hover:bg-zinc-800/10 transition-colors"
             >
               <X className="w-5 h-5" />
             </button>
-            <div className="flex flex-col items-center text-center mt-4">
+            <div className="flex flex-col items-center mt-4">
               <div className="relative">
-                {currentUser?.photoURL ? (
+                 {currentUser?.photoURL && !avatarFailed ? (
                   <img 
                     src={currentUser.photoURL} 
                     alt="Profile" 
                     className="w-20 h-20 rounded-full object-cover border-4 border-emerald-500/50 shadow-xl"
                     referrerPolicy="no-referrer"
+                    onError={() => setAvatarFailed(true)}
                   />
                 ) : (
                   <div className="w-20 h-20 rounded-full bg-emerald-600 flex items-center justify-center text-white text-3xl font-black border-4 border-emerald-500/50 shadow-xl">
-                    {(currentUser?.displayName?.[0] || currentUser?.email?.[0] || "U").toUpperCase()}
+                    {(editDisplayName?.[0] || currentUser?.displayName?.[0] || currentUser?.email?.[0] || "U").toUpperCase()}
                   </div>
                 )}
                 <span className="absolute bottom-0 right-0 px-2 py-0.5 bg-emerald-600 text-white text-[9px] font-bold font-mono rounded-full uppercase border-2 border-zinc-900">
@@ -496,53 +631,197 @@ export function DashboardWrapper({
               
               <div className="w-full border-t border-zinc-800/10 dark:border-zinc-800/60 my-5"></div>
               
-              <div className="w-full space-y-3.5 text-left text-sm">
-                <div className="flex justify-between items-center bg-zinc-800/10 dark:bg-zinc-950/40 p-3 rounded-xl border border-zinc-800/10 dark:border-zinc-800/40">
-                  <span className="text-zinc-400 font-mono text-xs uppercase tracking-wider">Account ID</span>
-                  <span className="font-mono text-xs font-bold select-all truncate max-w-[200px]">{currentUser?.uid || "fifa-admin-9x2"}</span>
-                </div>
-                {currentUser?.firstName && (
-                  <div className="flex justify-between items-center bg-zinc-800/10 dark:bg-zinc-950/40 p-3 rounded-xl border border-zinc-800/10 dark:border-zinc-800/40">
-                    <span className="text-zinc-400 font-mono text-xs uppercase tracking-wider">First Name</span>
-                    <span className="font-bold">{currentUser.firstName}</span>
+              {!isEditing ? (
+                <>
+                  <div className="w-full space-y-3.5 text-left text-sm">
+                    <div className="flex justify-between items-center bg-zinc-800/10 dark:bg-zinc-950/40 p-3 rounded-xl border border-zinc-800/10 dark:border-zinc-800/40">
+                      <span className="text-zinc-400 font-mono text-xs uppercase tracking-wider">Account ID</span>
+                      <span className="font-mono text-xs font-bold select-all truncate max-w-[200px]">{currentUser?.uid || "fifa-admin-9x2"}</span>
+                    </div>
+                    {currentUser?.firstName && (
+                      <div className="flex justify-between items-center bg-zinc-800/10 dark:bg-zinc-950/40 p-3 rounded-xl border border-zinc-800/10 dark:border-zinc-800/40">
+                        <span className="text-zinc-400 font-mono text-xs uppercase tracking-wider">First Name</span>
+                        <span className="font-bold">{currentUser.firstName}</span>
+                      </div>
+                    )}
+                    {currentUser?.lastName && (
+                      <div className="flex justify-between items-center bg-zinc-800/10 dark:bg-zinc-950/40 p-3 rounded-xl border border-zinc-800/10 dark:border-zinc-800/40">
+                        <span className="text-zinc-400 font-mono text-xs uppercase tracking-wider">Last Name</span>
+                        <span className="font-bold">{currentUser.lastName}</span>
+                      </div>
+                    )}
+                    {currentUser?.phoneNumber && (
+                      <div className="flex justify-between items-center bg-zinc-800/10 dark:bg-zinc-950/40 p-3 rounded-xl border border-zinc-800/10 dark:border-zinc-800/40">
+                        <span className="text-zinc-400 font-mono text-xs uppercase tracking-wider">Phone</span>
+                        <span className="font-bold">{currentUser.phoneNumber}</span>
+                      </div>
+                    )}
+                    {currentUser?.age !== undefined && currentUser?.age !== null && (
+                      <div className="flex justify-between items-center bg-zinc-800/10 dark:bg-zinc-950/40 p-3 rounded-xl border border-zinc-800/10 dark:border-zinc-800/40">
+                        <span className="text-zinc-400 font-mono text-xs uppercase tracking-wider">Age</span>
+                        <span className="font-bold">{currentUser.age}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center bg-zinc-800/10 dark:bg-zinc-950/40 p-3 rounded-xl border border-zinc-800/10 dark:border-zinc-800/40">
+                      <span className="text-zinc-400 font-mono text-xs uppercase tracking-wider">Active Workspace</span>
+                      <span className="font-bold capitalize">{selectedStadium === "st_sofi" ? "SoFi Stadium" : selectedStadium === "st_metlife" ? "MetLife Stadium" : selectedStadium === "st_mercedes" || selectedStadium === "st_mbs" ? "Mercedes-Benz" : "StadiumIQ Arena"}</span>
+                    </div>
+                    <div className="flex justify-between items-center bg-zinc-800/10 dark:bg-zinc-950/40 p-3 rounded-xl border border-zinc-800/10 dark:border-zinc-800/40">
+                      <span className="text-zinc-400 font-mono text-xs uppercase tracking-wider">Security clearance</span>
+                      <span className="px-2 py-0.5 bg-rose-500/10 text-rose-400 text-[10px] font-mono font-bold rounded border border-rose-500/20 uppercase tracking-widest">
+                        {persona === "fan" ? "Level 1 (Fan Access)" : "Level 4 (Operational Access)"}
+                      </span>
+                    </div>
+                    
+                    {currentUser?.password && (
+                      <div className="flex justify-between items-center bg-zinc-800/10 dark:bg-zinc-950/40 p-3 rounded-xl border border-zinc-800/10 dark:border-zinc-800/40">
+                        <span className="text-zinc-400 font-mono text-xs uppercase tracking-wider">Account Password</span>
+                        <span className="font-mono text-xs font-bold text-zinc-500">••••••••</span>
+                      </div>
+                    )}
                   </div>
-                )}
-                {currentUser?.lastName && (
-                  <div className="flex justify-between items-center bg-zinc-800/10 dark:bg-zinc-950/40 p-3 rounded-xl border border-zinc-800/10 dark:border-zinc-800/40">
-                    <span className="text-zinc-400 font-mono text-xs uppercase tracking-wider">Last Name</span>
-                    <span className="font-bold">{currentUser.lastName}</span>
+                  
+                  <div className="w-full flex gap-3 mt-6">
+                    {(persona === "fan" || persona === "volunteer") && (
+                      <button 
+                        onClick={() => setIsEditing(true)}
+                        className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 active:scale-98 text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2 border border-zinc-700 cursor-pointer"
+                      >
+                        <Edit className="w-4 h-4" /> Edit Profile
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => setShowProfileModal(false)}
+                      className={`py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold rounded-2xl transition-all shadow-lg shadow-emerald-950/20 cursor-pointer ${
+                        persona === "fan" || persona === "volunteer" ? "flex-1" : "w-full"
+                      }`}
+                    >
+                      Done
+                    </button>
                   </div>
-                )}
-                {currentUser?.phoneNumber && (
-                  <div className="flex justify-between items-center bg-zinc-800/10 dark:bg-zinc-950/40 p-3 rounded-xl border border-zinc-800/10 dark:border-zinc-800/40">
-                    <span className="text-zinc-400 font-mono text-xs uppercase tracking-wider">Phone</span>
-                    <span className="font-bold">{currentUser.phoneNumber}</span>
+                </>
+              ) : (
+                <form onSubmit={handleSaveProfile} className="w-full text-left space-y-4">
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase tracking-wider text-zinc-400 mb-1">Full Display Name</label>
+                    <input 
+                      type="text" 
+                      value={editDisplayName}
+                      onChange={(e) => setEditDisplayName(e.target.value)}
+                      placeholder="Display Name" 
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500 text-white"
+                      required
+                    />
                   </div>
-                )}
-                {currentUser?.age !== undefined && currentUser?.age !== null && (
-                  <div className="flex justify-between items-center bg-zinc-800/10 dark:bg-zinc-950/40 p-3 rounded-xl border border-zinc-800/10 dark:border-zinc-800/40">
-                    <span className="text-zinc-400 font-mono text-xs uppercase tracking-wider">Age</span>
-                    <span className="font-bold">{currentUser.age}</span>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase tracking-wider text-zinc-400 mb-1">First Name</label>
+                      <input 
+                        type="text" 
+                        value={editFirstName}
+                        onChange={(e) => setEditFirstName(e.target.value)}
+                        placeholder="First Name" 
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500 text-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase tracking-wider text-zinc-400 mb-1">Last Name</label>
+                      <input 
+                        type="text" 
+                        value={editLastName}
+                        onChange={(e) => setEditLastName(e.target.value)}
+                        placeholder="Last Name" 
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500 text-white"
+                      />
+                    </div>
                   </div>
-                )}
-                <div className="flex justify-between items-center bg-zinc-800/10 dark:bg-zinc-950/40 p-3 rounded-xl border border-zinc-800/10 dark:border-zinc-800/40">
-                  <span className="text-zinc-400 font-mono text-xs uppercase tracking-wider">Active Workspace</span>
-                  <span className="font-bold capitalize">{selectedStadium === "st_sofi" ? "SoFi Stadium" : selectedStadium === "st_metlife" ? "MetLife Stadium" : selectedStadium === "st_mercedes" || selectedStadium === "st_mbs" ? "Mercedes-Benz" : "StadiumIQ Arena"}</span>
-                </div>
-                <div className="flex justify-between items-center bg-zinc-800/10 dark:bg-zinc-950/40 p-3 rounded-xl border border-zinc-800/10 dark:border-zinc-800/40">
-                  <span className="text-zinc-400 font-mono text-xs uppercase tracking-wider">Security clearance</span>
-                  <span className="px-2 py-0.5 bg-rose-500/10 text-rose-400 text-[10px] font-mono font-bold rounded border border-rose-500/20 uppercase tracking-widest">
-                    {persona === "fan" ? "Level 1 (Fan Access)" : "Level 4 (Operational Access)"}
-                  </span>
-                </div>
-              </div>
-              
-              <button 
-                onClick={() => setShowProfileModal(false)}
-                className="w-full mt-6 py-3 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold rounded-2xl transition-all shadow-lg shadow-emerald-950/20"
-              >
-                Done
-              </button>
+
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase tracking-wider text-zinc-400 mb-1">Email Address</label>
+                    <input 
+                      type="email" 
+                      value={editEmail}
+                      onChange={(e) => setEditEmail(e.target.value)}
+                      placeholder="Email address" 
+                      className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500 text-white font-mono"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase tracking-wider text-zinc-400 mb-1">Phone Number</label>
+                      <input 
+                        type="tel" 
+                        value={editPhoneNumber}
+                        onChange={(e) => setEditPhoneNumber(e.target.value)}
+                        placeholder="Phone" 
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500 text-white font-mono"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase tracking-wider text-zinc-400 mb-1">Age</label>
+                      <input 
+                        type="number" 
+                        value={editAge}
+                        onChange={(e) => setEditAge(e.target.value)}
+                        placeholder="Age" 
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500 text-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase tracking-wider text-zinc-400 mb-1">Login Password</label>
+                    <div className="relative">
+                      <input 
+                        type={showPassword ? "text" : "password"} 
+                        value={editPassword}
+                        onChange={(e) => setEditPassword(e.target.value)}
+                        placeholder="Enter new password" 
+                        className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2 pr-10 text-xs focus:outline-none focus:border-emerald-500 text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 focus:outline-none cursor-pointer"
+                        title={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {saveError && (
+                    <div className="text-red-400 text-xs font-mono bg-red-950/20 border border-red-800/30 p-2.5 rounded-xl">
+                      {saveError}
+                    </div>
+                  )}
+
+                  {saveSuccess && (
+                    <div className="text-emerald-400 text-xs font-mono bg-emerald-950/20 border border-emerald-800/30 p-2.5 rounded-xl flex items-center gap-2">
+                      <Check className="w-4 h-4 animate-bounce" /> Profile saved successfully!
+                    </div>
+                  )}
+
+                  <div className="w-full flex gap-3 pt-2">
+                    <button 
+                      type="button"
+                      onClick={() => setIsEditing(false)}
+                      className="flex-1 py-3 bg-zinc-800 hover:bg-zinc-700 text-white font-bold rounded-2xl transition-all cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="submit"
+                      disabled={saveLoading}
+                      className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold rounded-2xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/20 cursor-pointer"
+                    >
+                      {saveLoading ? "Saving..." : "Save Changes"}
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         </div>

@@ -228,16 +228,16 @@ export async function seedDatabase(db: any): Promise<void> {
     { id: "m_r16_6", stage: "Round of 16", home_team: "United States", away_team: "Belgium", datetime_utc: "2026-07-07T00:00:00Z", stadium_id: "st_lumen", status: "completed", home_score: 1, away_score: 2 },
     { id: "m_r16_7", stage: "Round of 16", home_team: "Argentina", away_team: "Egypt", datetime_utc: "2026-07-07T16:00:00Z", stadium_id: "st_mbs", status: "completed", home_score: 2, away_score: 1 },
     { id: "m_r16_8", stage: "Round of 16", home_team: "Switzerland", away_team: "Colombia", datetime_utc: "2026-07-07T20:00:00Z", stadium_id: "st_bcplace", status: "completed", home_score: 3, away_score: 0 },
-
+ 
     // QUARTERFINALS
-    { id: "m_qf_1", stage: "Quarterfinals", home_team: "France", away_team: "Morocco", datetime_utc: "2026-07-09T20:00:00Z", stadium_id: "st_gillette", status: "completed", home_score: 2, away_score: 1 },
-    { id: "m_qf_2", stage: "Quarterfinals", home_team: "Spain", away_team: "Belgium", datetime_utc: "2026-07-10T19:00:00Z", stadium_id: "st_sofi", status: "scheduled" },
-    { id: "m_qf_3", stage: "Quarterfinals", home_team: "Norway", away_team: "England", datetime_utc: "2026-07-11T21:00:00Z", stadium_id: "st_hardrock", status: "scheduled" },
-    { id: "m_qf_4", stage: "Quarterfinals", home_team: "Argentina", away_team: "Switzerland", datetime_utc: "2026-07-12T01:00:00Z", stadium_id: "st_arrowhead", status: "scheduled" },
-
+    { id: "m_qf_1", stage: "Quarterfinals", home_team: "France", away_team: "Morocco", datetime_utc: "2026-07-10T18:00:00Z", stadium_id: "st_gillette", status: "completed", home_score: 2, away_score: 0 },
+    { id: "m_qf_2", stage: "Quarterfinals", home_team: "Spain", away_team: "Belgium", datetime_utc: "2026-07-11T20:00:00Z", stadium_id: "st_sofi", status: "completed", home_score: 2, away_score: 1 },
+    { id: "m_qf_3", stage: "Quarterfinals", home_team: "Norway", away_team: "England", datetime_utc: "2026-07-12T17:00:00Z", stadium_id: "st_hardrock", status: "completed", home_score: 1, away_score: 2 },
+    { id: "m_qf_4", stage: "Quarterfinals", home_team: "Argentina", away_team: "Switzerland", datetime_utc: "2026-07-12T19:00:00Z", stadium_id: "st_arrowhead", status: "completed", home_score: 3, away_score: 1 },
+  
     // SEMIFINALS
-    { id: "m_sf_1", stage: "Semifinals", home_team: "France", away_team: "TBD", datetime_utc: "2026-07-14T19:00:00Z", stadium_id: "st_att", status: "scheduled" },
-    { id: "m_sf_2", stage: "Semifinals", home_team: "TBD", away_team: "TBD", datetime_utc: "2026-07-15T19:00:00Z", stadium_id: "st_mbs", status: "scheduled" },
+    { id: "m_sf_1", stage: "Semifinals", home_team: "France", away_team: "Spain", datetime_utc: "2026-07-15T00:30:00Z", stadium_id: "st_att", status: "scheduled" },
+    { id: "m_sf_2", stage: "Semifinals", home_team: "England", away_team: "Argentina", datetime_utc: "2026-07-16T00:30:00Z", stadium_id: "st_mbs", status: "scheduled" },
 
     // THIRD PLACE MATCH
     { id: "m_3rd", stage: "Third Place Match", home_team: "TBD", away_team: "TBD", datetime_utc: "2026-07-18T21:00:00Z", stadium_id: "st_hardrock", status: "scheduled" },

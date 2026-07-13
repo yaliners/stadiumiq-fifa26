@@ -15,6 +15,18 @@ import { AdminDashboard } from "./components/AdminDashboard";
  */
 
 import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  AreaChart,
+  Area
+} from "recharts";
+
+import { 
   Send, 
   MessageSquare, 
   AlertTriangle, 
@@ -52,11 +64,25 @@ import {
   QrCode,
   ShoppingCart,
   Lock,
-  Bell
+  Bell,
+  Navigation,
+  LogOut,
+  ChevronDown,
+  UserCheck,
+  Zap,
+  Droplets,
+  Truck,
+  Users,
+  Radio,
+  WifiOff,
+  Eye,
+  EyeOff
 } from "lucide-react";
 
 import { DashboardWrapper } from "./components/DashboardWrapper";
 import { ChatInterface } from "./components/ChatInterface";
+import { MatchesSection } from "./components/MatchesSection";
+import { volunteerDetailsMap } from "./data/volunteerData";
 
 import en from "./locales/en.json";
 import es from "./locales/es.json";
@@ -354,13 +380,76 @@ function formatMessageText(text: string) {
   });
 }
 
+function IncidentImage({ src, category }: { src: string; category: string }) {
+  const [failed, setFailed] = useState(false);
+  
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
+  
+  if (failed || !src) {
+    return (
+      <div className="w-full h-full flex items-center justify-center bg-zinc-900 border border-zinc-800 text-zinc-500 rounded animate-fadeIn">
+        {category === "seat" ? (
+          <span className="text-xs">💺</span>
+        ) : category === "spill" ? (
+          <span className="text-xs">💧</span>
+        ) : category === "gate" ? (
+          <span className="text-xs">🚪</span>
+        ) : (
+          <span className="text-xs">⚠️</span>
+        )}
+      </div>
+    );
+  }
+  
+  return (
+    <img 
+      src={src} 
+      className="w-full h-full object-cover opacity-60 hover:opacity-100 transition-opacity" 
+      alt="Evidence" 
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
 export default function App() {
-  const [user, setUser] = useState<any | null>(null);
-  const [role, setRole] = useState<"staff" | "organizer" | "volunteer" | "fan" | "admin" | null>(null);
+  const getIncidentImage = (category: string) => {
+    switch (category) {
+      case "seat":
+        return "https://images.unsplash.com/photo-1599733589046-9b8308b5b50d?w=800&q=80";
+      case "gate":
+        return "https://images.unsplash.com/photo-1517404215738-15263e9f9178?w=800&q=80";
+      case "spill":
+        return "https://images.unsplash.com/photo-1605371924599-2d0365da1ae0?w=800&q=80";
+      default:
+        return "https://images.unsplash.com/photo-1511578314322-379afb476865?w=800&q=80";
+    }
+  };
+
+  const [user, setUser] = useState<any | null>(() => {
+    const savedUser = localStorage.getItem("stadiumiq_user");
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+  const [role, setRole] = useState<"staff" | "organizer" | "volunteer" | "fan" | "admin" | null>(() => {
+    return localStorage.getItem("stadiumiq_role") as any;
+  });
+
+  const [persona, setPersonaState] = useState<"staff" | "organizer" | "volunteer" | "fan" | "admin">(() => {
+    return (localStorage.getItem("stadiumiq_persona") as any) || "fan";
+  });
+
+  useEffect(() => {
+    if (user) localStorage.setItem("stadiumiq_user", JSON.stringify(user));
+    else localStorage.removeItem("stadiumiq_user");
+    if (role) localStorage.setItem("stadiumiq_role", role || "");
+    else localStorage.removeItem("stadiumiq_role");
+    localStorage.setItem("stadiumiq_persona", persona);
+  }, [user, role, persona]);
+
   const [loadingRole, setLoadingRole] = useState(false);
   const [locale, setLocale] = useState<"en" | "es" | "fr" | "de" | "pt" | "it">("en");
-  const [persona, setPersonaState] = useState<"staff" | "organizer" | "volunteer" | "fan" | "admin">("fan");
-
   const [isRoleVerified, setIsRoleVerified] = useState(false);
   const [showRoleAuthModal, setShowRoleAuthModal] = useState(false);
   const [pendingPersona, setPendingPersona] = useState<"staff" | "organizer" | "volunteer" | "fan" | "admin" | null>(null);
@@ -381,6 +470,58 @@ export default function App() {
 
   // New async loader states for Fan dashboard
   const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [egressMode, setEgressMode] = useState(false);
+  const [staffRoster, setStaffRoster] = useState([
+    { name: "John D.", role: "Security", zone: "Sector 112", status: "active" },
+    { name: "Sarah M.", role: "Steward", zone: "Gate A", status: "active" },
+    { name: "Mike R.", role: "Medical", zone: "Concourse East", status: "on-break" },
+    { name: "Elena V.", role: "Hospitality", zone: "VIP Box 4", status: "active" }
+  ]);
+  const [supervisorChat, setSupervisorChat] = useState<{ sender: string; text: string; time: string }[]>(() => {
+    const saved = localStorage.getItem("stadiumiq_supervisor_chat");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.length >= 0) return parsed;
+      } catch (e) {
+        console.error("Error reading supervisor chat from storage", e);
+      }
+    }
+    return [
+      { sender: "Admin", text: "All gates reporting clear flow for kickoff.", time: "17:45" },
+      { sender: "Security Lead", text: "Suspicious package at Sec 204 cleared. False alarm.", time: "18:02" }
+    ];
+  });
+  const [supervisorInput, setSupervisorInput] = useState("");
+
+  useEffect(() => {
+    if (supervisorChat && supervisorChat.length > 0) {
+      localStorage.setItem("stadiumiq_supervisor_chat", JSON.stringify(supervisorChat));
+    } else if (supervisorChat && supervisorChat.length === 0) {
+      localStorage.removeItem("stadiumiq_supervisor_chat");
+    }
+  }, [supervisorChat]);
+  const [parkingLots, setParkingLots] = useState({
+    Blue: 88,
+    Green: 42,
+    Red: 95,
+    Yellow: 12
+  });
+  const [restroomStatus, setRestroomStatus] = useState({
+    "Sec 112": "Low",
+    "Sec 204": "High",
+    "Gate A": "Medium",
+    "VIP East": "Low"
+  });
+  const [scanRateData] = useState([
+    { time: "17:00", rate: 120 },
+    { time: "17:15", rate: 350 },
+    { time: "17:30", rate: 840 },
+    { time: "17:45", rate: 1200 },
+    { time: "18:00", rate: 450 }
+  ]);
+  const [assignedIncidentId, setAssignedIncidentId] = useState<string | null>(null);
+
   const [checkoutStep, setCheckoutStep] = useState("");
   const [qrLoading, setQrLoading] = useState(false);
   const [qrProgressMessage, setQrProgressMessage] = useState("");
@@ -393,9 +534,18 @@ export default function App() {
 
   // ORGANIZER DASHBOARD STATE
   const [masterMatches, setMasterMatches] = useState([
-    { id: "m1", date: "July 11, 2026", time: "18:00", match: "USA vs Spain", venue: "SoFi Stadium", status: "In-Progress", density: "High", staffing: "Optimal" },
-    { id: "m2", date: "July 12, 2026", time: "15:00", match: "Mexico vs Germany", venue: "Estadio Azteca", status: "Scheduled", density: "Extreme", staffing: "Surge Required" },
-    { id: "m3", date: "July 14, 2026", time: "20:00", match: "Canada vs France", venue: "BC Place", status: "Scheduled", density: "Normal", staffing: "Optimal" },
+    { id: "m0", date: "July 10, 2026", time: "18:00", match: "France vs Morocco", venue: "Boston", status: "Complete", density: "High", staffing: "Optimal" },
+    { id: "m1", date: "July 11, 2026", time: "20:00", match: "Spain vs Belgium", venue: "Los Angeles", status: "Complete", density: "High", staffing: "Optimal" },
+    { id: "m2", date: "July 12, 2026", time: "17:00", match: "Norway vs England", venue: "Miami", status: "Complete", density: "High", staffing: "Optimal" },
+    { id: "m3", date: "July 12, 2026", time: "19:00", match: "Argentina vs Switzerland", venue: "Kansas City", status: "Complete", density: "High", staffing: "Optimal" },
+    { id: "m4", date: "July 15, 2026", time: "00:30", match: "France vs Spain", venue: "Dallas", status: "Scheduled", density: "Extreme", staffing: "Surge Required" },
+    { id: "m5", date: "July 16, 2026", time: "00:30", match: "England vs Argentina", venue: "Atlanta", status: "Scheduled", density: "Extreme", staffing: "Surge Required" },
+    { id: "m6", date: "July 19, 2026", time: "02:30", match: "Third Place Play-off", venue: "Miami", status: "Scheduled", density: "High", staffing: "Surge Required" },
+    { id: "m7", date: "July 20, 2026", time: "00:30", match: "FIFA WC Final", venue: "New Jersey", status: "Scheduled", density: "Extreme", staffing: "Surge Required" },
+    { id: "m8", date: "July 14, 2026", time: "21:00", match: "Brazil vs Italy", venue: "Mexico City", status: "Scheduled", density: "Extreme", staffing: "Surge Required" },
+    { id: "m9", date: "July 08, 2026", time: "19:00", match: "Mexico vs Colombia", venue: "Mexico City", status: "Complete", density: "High", staffing: "Optimal" },
+    { id: "m10", date: "July 08, 2026", time: "18:00", match: "Canada vs Portugal", venue: "Vancouver", status: "Scheduled", density: "High", staffing: "Optimal" },
+    { id: "m11", date: "July 12, 2026", time: "16:30", match: "Japan vs Spain", venue: "Vancouver", status: "Complete", density: "High", staffing: "Optimal" },
   ]);
   const [staffFleet, setStaffFleet] = useState<Record<string, number>>({
     stewards: 120,
@@ -476,10 +626,206 @@ export default function App() {
   const [globalEmergencyOverride, setGlobalEmergencyOverride] = useState<string | null>(null);
   const [newEmergencyMessage, setNewEmergencyMessage] = useState("");
   const [showChat, setShowChat] = useState(false);
+  const [chattingWithStaff, setChattingWithStaff] = useState<any>(null);
+  const [expandedImage, setExpandedImage] = useState<{ url: string; category: string; desc: string; location: string } | null>(null);
+  const [zoomImageFailed, setZoomImageFailed] = useState(false);
+  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
+  const [newStaffName, setNewStaffName] = useState("");
+  const [newStaffRole, setNewStaffRole] = useState("Security");
+  const [newStaffZone, setNewStaffZone] = useState("Sector 112");
+  const [newStaffStatus, setNewStaffStatus] = useState<"active" | "on-break">("active");
+
+  useEffect(() => {
+    setZoomImageFailed(false);
+  }, [expandedImage]);
+
+  // LIVE MATCH STATE (Persisted and auto-updating)
+  const [liveMatchData, setLiveMatchData] = useState(() => {
+    const now = new Date();
+    const isJuly = now.getMonth() === 6 && now.getFullYear() === 2026;
+    const date = now.getDate();
+    
+    // Only these dates have live matches
+    const liveDates = [15, 16, 19, 20];
+    const hasLiveMatchToday = isJuly && liveDates.includes(date);
+
+    let defaultMatch = { score: "0 - 0", minute: 0, home: "FRA", away: "ESP", status: "Scheduled", matchName: "Match 101" };
+
+    if (hasLiveMatchToday) {
+      if (date === 15) defaultMatch = { score: "0 - 0", minute: 1, home: "FRA", away: "ESP", status: "Live", matchName: "Match 101" };
+      else if (date === 16) defaultMatch = { score: "0 - 0", minute: 1, home: "ENG", away: "ARG", status: "Live", matchName: "Match 102" };
+      else if (date === 19) defaultMatch = { score: "0 - 0", minute: 1, home: "TBD", away: "TBD", status: "Live", matchName: "Third Place Play-off" };
+      else if (date === 20) defaultMatch = { score: "0 - 0", minute: 1, home: "TBD", away: "TBD", status: "Live", matchName: "Final" };
+    }
+
+    const saved = localStorage.getItem("stadiumIq_liveMatch");
+    if (saved) {
+       const parsed = JSON.parse(saved);
+       // If local storage says it's Live but there's no live match today, override it
+       if (parsed.status === "Live" && !hasLiveMatchToday) {
+          return defaultMatch;
+       }
+       return parsed;
+    }
+
+    return defaultMatch;
+  });
+
+  // Auto-reset live match if today is not an official live match date (July 13, 14, 17, 18)
+  useEffect(() => {
+    const now = new Date();
+    const isJuly = now.getMonth() === 6 && now.getFullYear() === 2026;
+    const date = now.getDate();
+    const liveDates = [15, 16, 19, 20];
+    const hasLiveMatchToday = isJuly && liveDates.includes(date);
+
+    if (!hasLiveMatchToday) {
+      setLiveMatchData({ score: "0 - 0", minute: 0, home: "FRA", away: "ESP", status: "Scheduled", matchName: "Match 101" });
+      localStorage.removeItem("stadiumIq_liveMatch");
+    }
+  }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLiveMatchData((prev: any) => {
+        if (prev.status !== "Live") return prev;
+        let newMin = prev.minute + 1;
+        let newScore = prev.score;
+        let newStatus = prev.status;
+        if (newMin > 90) {
+          newMin = 90;
+          newStatus = "FT";
+        }
+        // Randomly score a goal (rarely)
+        if (newStatus === "Live" && Math.random() > 0.95) {
+          const [home, away] = prev.score.split(" - ").map(Number);
+          if (Math.random() > 0.5) {
+             newScore = `${home + 1} - ${away}`;
+          } else {
+             newScore = `${home} - ${away + 1}`;
+          }
+        }
+        const nextState = { ...prev, minute: newMin, score: newScore, status: newStatus };
+        localStorage.setItem("stadiumIq_liveMatch", JSON.stringify(nextState));
+        return nextState;
+      });
+    }, 60000); // update every minute
+    return () => clearInterval(interval);
+  }, []);
 
   // FAN DASHBOARD STATE
   const [ticketScanned, setTicketScanned] = useState(false);
   const [entryCountdown, setEntryCountdown] = useState(42); // minutes left
+  const [qrSeed, setQrSeed] = useState(Date.now());
+  const [secondsLeft, setSecondsLeft] = useState(60);
+  const [redeemedVouchers, setRedeemedVouchers] = useState<Record<string, boolean>>({});
+
+  // Dynamic gate timer countdown update based on selectedStadium
+  useEffect(() => {
+    const countdownMap: Record<string, number> = {
+      st_sofi: 42,
+      st_metlife: 58,
+      st_mercedes: 15,
+      st_mbs: 15,
+      st_azteca: 75,
+      st_bcplace: 30,
+      st_hardrock: 40,
+    };
+    const nextCountdown = countdownMap[selectedStadium] ?? 35;
+    setEntryCountdown(nextCountdown);
+
+    // Update staff fleet count on stadium change
+    const fleetMap: Record<string, Record<string, number>> = {
+      st_sofi: { stewards: 120, security: 85, medical: 24, cleaners: 45 },
+      st_metlife: { stewards: 140, security: 110, medical: 30, cleaners: 60 },
+      st_mercedes: { stewards: 110, security: 80, medical: 20, cleaners: 40 },
+      st_mbs: { stewards: 110, security: 80, medical: 20, cleaners: 40 },
+      st_azteca: { stewards: 160, security: 130, medical: 35, cleaners: 70 },
+      st_bcplace: { stewards: 90, security: 65, medical: 15, cleaners: 30 },
+      st_hardrock: { stewards: 130, security: 95, medical: 25, cleaners: 50 },
+    };
+    const nextFleet = fleetMap[selectedStadium] || fleetMap.st_sofi;
+    setStaffFleet(nextFleet);
+
+    // Update incidents on stadium change
+    const incidentPresets: Record<string, {id: string; location: string; category: "seat" | "spill" | "gate" | "other"; desc: string; status: "pending" | "active" | "resolved"; severity: "low" | "medium" | "high"; time: string; image?: string}[]> = {
+      st_sofi: [
+        { id: "inc-01", location: "Section 112, Row 4", category: "seat", desc: "Broken backing on seat 12", status: "pending", severity: "medium", time: "10 mins ago", image: "https://images.unsplash.com/photo-1599733589046-9b8308b5b50d?w=800&q=80" },
+        { id: "inc-02", location: "Gate B Security Lane 3", category: "gate", desc: "Bag scanner calibration fault", status: "active", severity: "high", time: "5 mins ago", image: "https://images.unsplash.com/photo-1517404215738-15263e9f9178?w=800&q=80" },
+        { id: "inc-03", location: "Concourse C near Restrooms", category: "spill", desc: "Liquid spill hazard", status: "resolved", severity: "low", time: "25 mins ago", image: "https://images.unsplash.com/photo-1605371924599-2d0365da1ae0?w=800&q=80" },
+      ],
+      st_metlife: [
+        { id: "inc-01", location: "Section 204, Row 15", category: "seat", desc: "Damaged safety rail bracket", status: "pending", severity: "high", time: "12 mins ago", image: "https://images.unsplash.com/photo-1599733589046-9b8308b5b50d?w=800&q=80" },
+        { id: "inc-02", location: "Gate A Turnstile 2", category: "gate", desc: "Biometric validation delay", status: "active", severity: "medium", time: "8 mins ago", image: "https://images.unsplash.com/photo-1517404215738-15263e9f9178?w=800&q=80" },
+        { id: "inc-03", location: "Concourse Food Court East", category: "spill", desc: "Water spill near beverage station", status: "resolved", severity: "low", time: "15 mins ago", image: "https://images.unsplash.com/photo-1590244921951-2293307f6834?w=800&q=80" },
+      ],
+      st_mercedes: [
+        { id: "inc-01", location: "Section 120, Row 8", category: "seat", desc: "Stuck folding chair mechanism", status: "pending", severity: "low", time: "18 mins ago", image: "https://images.unsplash.com/photo-1599733589046-9b8308b5b50d?w=800&q=80" },
+        { id: "inc-02", location: "Gate C Metal Detector", category: "gate", desc: "Intermittent sensitivity drops", status: "active", severity: "high", time: "4 mins ago", image: "https://images.unsplash.com/photo-1517404215738-15263e9f9178?w=800&q=80" },
+        { id: "inc-03", location: "Concourse South Exit 4", category: "spill", desc: "Slippery floor near beverage dispenser", status: "resolved", severity: "medium", time: "30 mins ago", image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&q=80" },
+      ],
+      st_mbs: [
+        { id: "inc-01", location: "Section 120, Row 8", category: "seat", desc: "Stuck folding chair mechanism", status: "pending", severity: "low", time: "18 mins ago", image: "https://images.unsplash.com/photo-1599733589046-9b8308b5b50d?w=800&q=80" },
+        { id: "inc-02", location: "Gate C Metal Detector", category: "gate", desc: "Intermittent sensitivity drops", status: "active", severity: "high", time: "4 mins ago", image: "https://images.unsplash.com/photo-1517404215738-15263e9f9178?w=800&q=80" },
+        { id: "inc-03", location: "Concourse South Exit 4", category: "spill", desc: "Slippery floor near beverage dispenser", status: "resolved", severity: "medium", time: "30 mins ago", image: "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&q=80" },
+      ],
+      st_azteca: [
+        { id: "inc-01", location: "Lower Deck, Row 20", category: "seat", desc: "Missing seat number tag", status: "pending", severity: "low", time: "22 mins ago", image: "https://images.unsplash.com/photo-1599733589046-9b8308b5b50d?w=800&q=80" },
+        { id: "inc-02", location: "Gate G Main Entry", category: "gate", desc: "Turnstile registration lag", status: "active", severity: "medium", time: "9 mins ago", image: "https://images.unsplash.com/photo-1517404215738-15263e9f9178?w=800&q=80" },
+        { id: "inc-03", location: "Ramp Approach West", category: "spill", desc: "Slippery puddle near trash container", status: "resolved", severity: "medium", time: "28 mins ago", image: "https://images.unsplash.com/photo-1558317374-067fb5f30001?w=800&q=80" },
+      ],
+      st_bcplace: [
+        { id: "inc-01", location: "Section 215, Row 1", category: "seat", desc: "Unsecured carpet tile", status: "pending", severity: "medium", time: "14 mins ago", image: "https://images.unsplash.com/photo-1599733589046-9b8308b5b50d?w=800&q=80" },
+        { id: "inc-02", location: "Gate D Entry Lane", category: "gate", desc: "Dirty scanner optical lens", status: "active", severity: "medium", time: "6 mins ago", image: "https://images.unsplash.com/photo-1517404215738-15263e9f9178?w=800&q=80" },
+        { id: "inc-03", location: "Level 2 Concourse", category: "spill", desc: "Slippery soda beverage residue", status: "resolved", severity: "low", time: "20 mins ago", image: "https://images.unsplash.com/photo-1513151233558-d860c5398176?w=800&q=80" },
+      ],
+      st_hardrock: [
+        { id: "inc-01", location: "Section 104, Row 5", category: "seat", desc: "Loose cup holder", status: "pending", severity: "low", time: "10 mins ago", image: "https://images.unsplash.com/photo-1599733589046-9b8308b5b50d?w=800&q=80" },
+        { id: "inc-02", location: "Gate E Entry", category: "gate", desc: "Scanner connectivity intermittent", status: "active", severity: "medium", time: "5 mins ago", image: "https://images.unsplash.com/photo-1517404215738-15263e9f9178?w=800&q=80" },
+      ],
+    };
+
+    const nextIncidents = incidentPresets[selectedStadium] ?? incidentPresets.st_sofi;
+    setIncidents(nextIncidents);
+
+    // Clear voucher redemptions immediately on stadium changes
+    setRedeemedVouchers({});
+  }, [selectedStadium]);
+
+  // Automatically clear voucher redemption state 60 seconds after scan
+  useEffect(() => {
+    const activeKeys = Object.keys(redeemedVouchers).filter(k => redeemedVouchers[k]);
+    if (activeKeys.length === 0) return;
+
+    const timers = activeKeys.map(stadiumKey => {
+      return setTimeout(() => {
+        setRedeemedVouchers(prev => {
+          const updated = { ...prev };
+          delete updated[stadiumKey];
+          return updated;
+        });
+      }, 60000); // 60 seconds
+    });
+
+    return () => {
+      timers.forEach(t => clearTimeout(t));
+    };
+  }, [redeemedVouchers]);
+
+  // 60-second QR code auto-refresh countdown
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev <= 1) {
+          setQrSeed(Date.now());
+          return 60;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const [cart, setCart] = useState<{name: string; price: number; type: "food" | "merch"; quantity: number}[]>([]);
   const [orderSubmitted, setOrderSubmitted] = useState(false);
   const [orderStatus, setOrderStatus] = useState("");
@@ -487,10 +833,11 @@ export default function App() {
   const [lastOrderDetails, setLastOrderDetails] = useState<{items: {name: string; price: number; type: "food" | "merch"; quantity: number}[]; total: number} | null>(null);
 
   // STAFF DASHBOARD STATE
-  const [incidents, setIncidents] = useState<{id: string; location: string; category: "seat" | "spill" | "gate" | "other"; desc: string; status: "pending" | "active" | "resolved"; severity: "low" | "medium" | "high"; time: string}[]>([
-    { id: "inc-01", location: "Section 112, Row 4", category: "seat", desc: "Broken backing on seat 12", status: "pending", severity: "medium", time: "10 mins ago" },
-    { id: "inc-02", location: "Gate B Security Lane 3", category: "gate", desc: "Bag scanner calibration fault", status: "active", severity: "high", time: "5 mins ago" },
-    { id: "inc-03", location: "Concourse C near Restrooms", category: "spill", desc: "Liquid spill hazard", status: "resolved", severity: "low", time: "25 mins ago" },
+  const [showLogIncidentModal, setShowLogIncidentModal] = useState(false);
+  const [incidents, setIncidents] = useState<{id: string; location: string; category: "seat" | "spill" | "gate" | "other"; desc: string; status: "pending" | "active" | "resolved"; severity: "low" | "medium" | "high"; time: string; image?: string}[]>([
+    { id: "inc-01", location: "Section 112, Row 4", category: "seat", desc: "Broken backing on seat 12", status: "pending", severity: "medium", time: "10 mins ago", image: "https://images.unsplash.com/photo-1599733589046-9b8308b5b50d?w=800&q=80" },
+    { id: "inc-02", location: "Gate B Security Lane 3", category: "gate", desc: "Bag scanner calibration fault", status: "active", severity: "high", time: "5 mins ago", image: "https://images.unsplash.com/photo-1517404215738-15263e9f9178?w=800&q=80" },
+    { id: "inc-03", location: "Concourse C near Restrooms", category: "spill", desc: "Liquid spill hazard", status: "resolved", severity: "low", time: "25 mins ago", image: "https://images.unsplash.com/photo-1605371924599-2d0365da1ae0?w=800&q=80" },
   ]);
   const [newIncidentLoc, setNewIncidentLoc] = useState("");
   const [newIncidentCat, setNewIncidentCat] = useState<"seat" | "spill" | "gate" | "other">("seat");
@@ -505,9 +852,35 @@ export default function App() {
 
   const [faqSearchQuery, setFaqSearchQuery] = useState("");
   const [faqSearchResult, setFaqSearchResult] = useState<string | null>(null);
-  const [volunteerCheckedIn, setVolunteerCheckedIn] = useState(false);
+  const [checkedInStadiums, setCheckedInStadiums] = useState<Record<string, boolean>>({
+    st_sofi: false,
+    st_metlife: false,
+    st_mercedes: false,
+    st_azteca: false,
+    st_bcplace: false,
+  });
+  const volunteerCheckedIn = checkedInStadiums[selectedStadium === "st_mbs" ? "st_mercedes" : selectedStadium] || false;
+  const setVolunteerCheckedIn = (val: boolean) => {
+    setCheckedInStadiums(prev => ({
+      ...prev,
+      [selectedStadium === "st_mbs" ? "st_mercedes" : selectedStadium]: val
+    }));
+  };
   const [volunteerDistance, setVolunteerDistance] = useState(0.2); // km to stadium
   const [volunteerShiftHours] = useState("08:00 AM - 04:00 PM");
+
+  const [volunteerOnBreak, setVolunteerOnBreak] = useState(false);
+  const [pendingHandshake, setPendingHandshake] = useState<Record<string, boolean>>({});
+  const [supervisorPinInput, setSupervisorPinInput] = useState("");
+  const [showSupervisorPin, setShowSupervisorPin] = useState(false);
+  const [pinError, setPinError] = useState("");
+  const [isPassModalOpen, setIsPassModalOpen] = useState(false);
+  const [activeWalkieTalkie, setActiveWalkieTalkie] = useState<string | null>(null);
+  const [isRadioTransmitting, setIsRadioTransmitting] = useState(false);
+  const [radioLogs, setRadioLogs] = useState<string[]>([
+    "Sector B Dispatch: Station B online.",
+    "Jane Doe: Volunteers, please keep Gate B approach pathways clear."
+  ]);
 
   const [panicModeActive, setPanicModeActive] = useState(false);
   const [panicCountdown, setPanicCountdown] = useState(5);
@@ -574,15 +947,17 @@ export default function App() {
   const setPersona = (p: "staff" | "organizer" | "volunteer" | "fan" | "admin") => {
     if (p === "fan") {
       setPersonaState("fan");
-      setIsRoleVerified(false);
       setPendingPersona(null);
     } else {
-      // Switch away locks the previous role, requiring re-authentication
-      setIsRoleVerified(false);
-      setPendingPersona(p);
-      setRoleAuthPin("");
-      setRoleAuthError(null);
-      setShowRoleAuthModal(true);
+      // Once verified, don't lock again for this session
+      if (isRoleVerified) {
+        setPersonaState(p);
+      } else {
+        setPendingPersona(p);
+        setRoleAuthPin("");
+        setRoleAuthError(null);
+        setShowRoleAuthModal(true);
+      }
     }
   };
 
@@ -1184,6 +1559,19 @@ export default function App() {
         ? `Bonjour, ${personName} ! 👋 Bienvenue sur StadiumIQ.\n\n${desc}`
         : `Hello, ${personName}! 👋 Welcome to StadiumIQ.\n\n${desc}`;
 
+    const saved = localStorage.getItem(`stadiumiq_helpdesk_messages_${persona}_${locale}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.length > 0) {
+          setMessages(parsed);
+          return;
+        }
+      } catch (e) {
+        console.error("Error parsing saved messages", e);
+      }
+    }
+
     setMessages([
       {
         id: "welcome",
@@ -1195,6 +1583,15 @@ export default function App() {
       },
     ]);
   }, [locale, persona]);
+
+  // Persist messages to localStorage on any change or clear
+  useEffect(() => {
+    if (messages && messages.length > 0) {
+      localStorage.setItem(`stadiumiq_helpdesk_messages_${persona}_${locale}`, JSON.stringify(messages));
+    } else if (messages && messages.length === 0) {
+      localStorage.removeItem(`stadiumiq_helpdesk_messages_${persona}_${locale}`);
+    }
+  }, [messages, persona, locale]);
 
   // Generation controls (Stop & Pause)
   const handleStopResponse = () => {
@@ -1322,6 +1719,7 @@ export default function App() {
   if (!user || !role) {
     return (
       <AuthScreen 
+        locale={locale}
         onAuthSuccess={(r, customUser) => {
           const loggedInUser = customUser || {
             uid: `fifa-${r}`,
@@ -1333,6 +1731,8 @@ export default function App() {
           setRole(r);
           setPersonaState(r);
           setIsRoleVerified(true);
+          localStorage.setItem("stadiumiq_user", JSON.stringify(loggedInUser));
+          localStorage.setItem("stadiumiq_role", r);
         }} 
       />
     );
@@ -1868,6 +2268,28 @@ export default function App() {
           ? "border-white bg-black" 
           : "border-[#27272a] bg-[#09090b] shadow-[0_10px_30px_rgba(0,0,0,0.5)]"
       }`}>
+        {/* Chatbot Header */}
+        <div className="flex items-center justify-between px-5 py-3 border-b border-[#27272a] bg-[#0d0d11]">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-zinc-300">
+              {locale === "es" ? "Asistente StadiumIQ" : locale === "fr" ? "Assistant StadiumIQ" : "StadiumIQ Helpdesk"}
+            </span>
+          </div>
+          <button
+            onClick={() => {
+              if (window.confirm(locale === "es" ? "¿Limpiar todo el historial de chat?" : locale === "fr" ? "Effacer tout l'historique du chat ?" : "Clear all chat history?")) {
+                setMessages([]);
+                localStorage.removeItem(`stadiumiq_helpdesk_messages_${persona}_${locale}`);
+              }
+            }}
+            className="flex items-center gap-1 px-2.5 py-1 text-[9px] font-mono font-bold uppercase tracking-wider text-zinc-500 hover:text-red-400 bg-zinc-900/50 hover:bg-red-500/10 border border-zinc-800/80 hover:border-red-500/20 rounded-lg transition-all"
+          >
+            <Trash2 className="w-3 h-3" />
+            {locale === "es" ? "Limpiar" : locale === "fr" ? "Effacer" : "Clear"}
+          </button>
+        </div>
+
         {/* Conversations Log */}
         <div 
           ref={chatContainerRef}
@@ -2046,8 +2468,64 @@ export default function App() {
   };
 
   const renderFanDashboard = () => {
+    const getTicketDetailsForStadium = (stadiumId: string) => {
+      const detailsMap: Record<string, { match: string; teams: string; date: string; gate: string; section: string; venue: string }> = {
+        st_sofi: {
+          match: "MATCH 101 - SEMI-FINAL",
+          teams: "France vs Spain",
+          date: "JULY 15, 2026 • 20:00",
+          gate: "GATE A",
+          section: "SEC 112",
+          venue: "SoFi Stadium"
+        },
+        st_metlife: {
+          match: "MATCH 104 - GRAND FINAL",
+          teams: "Argentina vs England",
+          date: "JULY 19, 2026 • 20:00",
+          gate: "GATE B",
+          section: "SEC 104",
+          venue: "MetLife Stadium"
+        },
+        st_mercedes: {
+          match: "MATCH 98 - QUARTER-FINAL",
+          teams: "USA vs Germany",
+          date: "JULY 11, 2026 • 19:30",
+          gate: "GATE C",
+          section: "SEC 120",
+          venue: "Mercedes-Benz Stadium"
+        },
+        st_mbs: {
+          match: "MATCH 98 - QUARTER-FINAL",
+          teams: "USA vs Germany",
+          date: "JULY 11, 2026 • 19:30",
+          gate: "GATE C",
+          section: "SEC 120",
+          venue: "Mercedes-Benz Stadium"
+        },
+        st_azteca: {
+          match: "MATCH 100 - SEMI-FINAL",
+          teams: "Brazil vs Italy",
+          date: "JULY 14, 2026 • 21:00",
+          gate: "GATE G",
+          section: "SEC 302",
+          venue: "Estadio Azteca"
+        },
+        st_bcplace: {
+          match: "MATCH 95 - ROUND OF 16",
+          teams: "Canada vs Portugal",
+          date: "July 08, 2026 • 18:00",
+          gate: "GATE D",
+          section: "SEC 215",
+          venue: "BC Place"
+        }
+      };
+      return detailsMap[stadiumId] || detailsMap["st_sofi"];
+    };
+    const ticketDetails = getTicketDetailsForStadium(selectedStadium);
+
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch w-full animate-fadeIn lg:min-h-[580px]">
+      <>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch w-full animate-fadeIn lg:min-h-[580px]">
         {/* Left Column: Ticket Wallet and Pre-orders */}
         <div className="col-span-full lg:col-span-4 flex flex-col gap-4 lg:h-full min-h-0">
           {/* Ticket Wallet Widget */}
@@ -2061,10 +2539,10 @@ export default function App() {
             
             <div className="bg-[#18181b]/50 border border-[#27272a]/50 p-3 sm:p-4 rounded-xl flex flex-col items-center justify-center text-center relative overflow-hidden flex-1 min-h-0 my-2">
               <div className="absolute top-2 right-2 text-[8px] font-mono text-zinc-500 uppercase">FIFA SECURE</div>
-              <p className="text-[9px] uppercase font-mono tracking-widest text-[#22c55e] font-bold">MATCH 24 - GROUP STAGE</p>
-              <h4 className="text-sm sm:text-base font-black text-white tracking-tight mt-0.5">USA vs SPAIN</h4>
-              <p className="text-[10px] sm:text-[11px] text-zinc-400 font-medium">JULY 11, 2026 • 18:00</p>
-              <p className="text-[9px] sm:text-[10px] font-mono text-zinc-500 mt-0.5">SoFi Stadium • GATE A • SEC 112</p>
+              <p className="text-[9px] uppercase font-mono tracking-widest text-emerald-400 font-bold">{ticketDetails.match}</p>
+              <h4 className="text-sm sm:text-base font-black text-white tracking-tight mt-0.5 uppercase">{ticketDetails.teams}</h4>
+              <p className="text-[10px] sm:text-[11px] text-zinc-400 font-medium">{ticketDetails.date}</p>
+              <p className="text-[9px] sm:text-[10px] font-mono text-zinc-500 mt-0.5">{ticketDetails.venue} • {ticketDetails.gate} • {ticketDetails.section}</p>
 
               {/* Interactive QR code */}
               <div 
@@ -2086,7 +2564,7 @@ export default function App() {
                         <div className="absolute left-0 top-0 right-0 h-0.5 bg-emerald-500 shadow-[0_2px_8px_#10b981] animate-bounce" style={{ animationDuration: "2s" }}></div>
                       )}
                       <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=96x96&color=000000&bgcolor=ffffff&data=${encodeURIComponent(`FIFA2026:MATCH24:USA-vs-SPAIN:SEC112:GATEA:SESSION-${sessionId}`)}`}
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=96x96&color=000000&bgcolor=ffffff&data=${encodeURIComponent(`FIFA2026:MATCH101:FRA-vs-ESP:SEC204:GATE-C:USER-${sessionId}:${qrSeed}`)}`}
                         alt="Digital Ticket QR Code"
                         className={`w-20 h-20 transition-opacity duration-300 ${ticketScanned ? "opacity-25" : ""}`}
                         referrerPolicy="no-referrer"
@@ -2100,6 +2578,12 @@ export default function App() {
                   )}
                 </div>
               </div>
+
+              <div className="flex items-center gap-1.5 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20 text-[8px] font-mono text-emerald-400 font-bold mb-1 shadow-sm animate-fadeIn">
+                <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                <span>AUTO-REFRESH SECURE CODE: {secondsLeft}S</span>
+              </div>
+
               <p className="text-[8px] sm:text-[9px] font-mono text-zinc-500">
                 {qrLoading 
                   ? (locale === "es" ? "Procesando Verificación..." : locale === "fr" ? "Vérification en cours..." : "Processing Verification...") 
@@ -2111,7 +2595,21 @@ export default function App() {
               <Clock className="w-4 h-4 text-amber-400 shrink-0 animate-pulse" />
               <div>
                 <p className="text-[9px] font-black text-amber-300 uppercase">GATE TIMER</p>
-                <p className="text-[10px] sm:text-[11px] text-amber-400 font-mono leading-tight mt-0.5">Kick-off in {entryCountdown} minutes. Gate A is congested; use Gate C for faster 4-minute access.</p>
+                <p className="text-[10px] sm:text-[11px] text-amber-400 font-mono leading-tight mt-0.5">
+                  Kick-off in {entryCountdown} minutes. {
+                    (() => {
+                      const messageMap: Record<string, string> = {
+                        st_sofi: "Gate A is congested; use Gate C for faster 4-minute access.",
+                        st_metlife: "Gate B has a queue spike; Gate D has 10+ open turnstiles now.",
+                        st_mercedes: "Field entrances clear; Security Lane 4 is recommended.",
+                        st_mbs: "Field entrances clear; Security Lane 4 is recommended.",
+                        st_azteca: "Ramp approaches clear; lower level gates flowing under 5 mins.",
+                        st_bcplace: "Main plaza queue clearing; West concourse is low delay."
+                      };
+                      return messageMap[selectedStadium] || "Gate flow normal; check local signs for queues.";
+                    })()
+                  }
+                </p>
               </div>
             </div>
           </div>
@@ -2132,7 +2630,11 @@ export default function App() {
                     { name: "🌭 Classic Stadium Hotdog", price: 8.50 },
                     { name: "🥤 Commemorative FIFA Cup", price: 6.00 },
                     { name: "👕 USA Tournament Jersey", price: 85.00 },
-                    { name: "🧢 FIFA World Cup Cap", price: 25.00 }
+                    { name: "🧢 FIFA World Cup Cap", price: 25.00 },
+                    { name: "🍿 Giant Popcorn Bucket", price: 12.00 },
+                    { name: "🥨 Warm Soft Pretzel", price: 7.50 },
+                    { name: "🎒 World Cup Backpack", price: 45.00 },
+                    { name: "🧣 National Team Scarf", price: 30.00 }
                   ].map((item, idx) => {
                     const count = cart.find(c => c.name === item.name)?.quantity || 0;
                     return (
@@ -2312,338 +2814,833 @@ export default function App() {
           {renderInteractiveMap()}
         </div>
       </div>
+      <div className="w-full mt-6">
+        <MatchesSection selectedStadium={selectedStadium} stadiums={stadiums} />
+      </div>
+    </>
     );
   };
 
   const renderStaffDashboard = () => {
+    const getVenuePowerLoad = (stadiumId: string) => {
+      const powerMap: Record<string, { value: string; pct: number }> = {
+        st_sofi: { value: "84.2", pct: 84 },
+        st_metlife: { value: "96.5", pct: 96 },
+        st_mercedes: { value: "78.1", pct: 78 },
+        st_mbs: { value: "78.1", pct: 78 },
+        st_azteca: { value: "64.9", pct: 65 },
+        st_bcplace: { value: "58.3", pct: 58 }
+      };
+      return powerMap[stadiumId] || powerMap["st_sofi"];
+    };
+    const powerLoad = getVenuePowerLoad(selectedStadium);
+
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch w-full animate-fadeIn">
-        {/* Left Column: Live Incident Log and Creator */}
-        <div className="col-span-full lg:col-span-5 flex flex-col gap-6">
-          <div className="rounded-2xl p-5 border border-[#27272a] bg-[#09090b] shadow-lg flex flex-col gap-4 h-full">
-            <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
+      <div className="flex flex-col gap-6 animate-fadeIn w-full">
+        {/* Top Section: Stadium Operations Clock & Gate Protocol Tracker */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
+          <div className="col-span-12 md:col-span-8 rounded-3xl p-6 border border-[#27272a] bg-[#09090b] shadow-2xl flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-transparent pointer-events-none" />
+            <div className="flex items-center gap-6">
+              <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <Clock className="w-8 h-8 animate-pulse" />
+              </div>
               <div>
-                <h3 className="font-bold text-xs tracking-wider uppercase text-white flex items-center gap-1.5">
-                  <ShieldAlert className="text-red-500 w-4 h-4 animate-pulse" /> Incident Logging System
-                </h3>
-                <p className="text-[9px] text-[#71717a] font-mono uppercase mt-0.5">Real-Time Facility Command</p>
-              </div>
-              <span className="text-[9px] font-mono text-zinc-500 bg-zinc-900 border border-zinc-850 px-2 py-0.5 rounded uppercase">
-                {incidents.filter(i => i.status !== "resolved").length} active
-              </span>
-            </div>
-
-            {/* Incident List */}
-            <div className="space-y-2 flex-1 overflow-y-auto max-h-[220px] pr-1">
-              {incidents.map((inc) => (
-                <div key={inc.id} className="p-3 rounded-lg border border-[#27272a]/50 bg-zinc-950 flex items-start justify-between gap-3 text-xs">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1.5">
-                      <span className={`px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase ${
-                        inc.severity === "high" ? "bg-red-500/10 text-red-400 border border-red-500/20" :
-                        inc.severity === "medium" ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" :
-                        "bg-blue-500/10 text-blue-400 border border-blue-500/20"
-                      }`}>
-                        {inc.severity}
-                      </span>
-                      <span className="font-bold text-white uppercase text-[10px]">{inc.location}</span>
-                    </div>
-                    <p className="text-zinc-400 text-[11px] font-mono leading-relaxed">{inc.desc}</p>
-                    <span className="text-[9px] font-mono text-zinc-600 block">{inc.time}</span>
+                <h3 className="text-2xl font-black text-white uppercase tracking-tighter leading-none">Operational Clock</h3>
+                <p className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mt-1">Gate Protocol Tracker</p>
+                <div className="flex items-center gap-4 mt-3">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-mono text-emerald-500 uppercase">Public Gates Open</span>
+                    <span className="text-lg font-black text-white">02h 14m</span>
                   </div>
-
-                  <button
-                    onClick={() => {
-                      setIncidents(prev => prev.map(p => {
-                        if (p.id !== inc.id) return p;
-                        const nextStatus: "pending" | "active" | "resolved" = 
-                          p.status === "pending" ? "active" : p.status === "active" ? "resolved" : "pending";
-                        logRoleActivity(`Staff changed incident ${p.id} (${p.category}) status at ${p.location} to: ${nextStatus.toUpperCase()}`);
-                        return { ...p, status: nextStatus };
-                      }));
-                    }}
-                    className={`px-2.5 py-1 rounded text-[10px] font-bold font-mono transition-all border ${
-                      inc.status === "resolved" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" :
-                      inc.status === "active" ? "bg-amber-500/10 text-amber-400 border-amber-500/30 animate-pulse" :
-                      "bg-zinc-800 text-zinc-400 border-zinc-700 hover:border-zinc-500"
-                    }`}
-                  >
-                    {inc.status.toUpperCase()}
-                  </button>
+                  <div className="w-px h-8 bg-zinc-800" />
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-mono text-amber-500 uppercase">Kickoff Countdown</span>
+                    <span className="text-lg font-black text-white">04h 14m</span>
+                  </div>
                 </div>
-              ))}
+              </div>
             </div>
 
-            {/* Log Incident Form */}
-            <div className="border-t border-[#27272a] pt-4 flex flex-col gap-3 bg-[#050505]/40 p-3 rounded-xl">
-              <h4 className="text-[10px] font-bold uppercase tracking-wider text-[#71717a] font-mono">Log New Operations Incident</h4>
-              <div className="grid grid-cols-2 gap-2">
-                <input 
-                  type="text" 
-                  value={newIncidentLoc} 
-                  onChange={(e) => setNewIncidentLoc(e.target.value)} 
-                  placeholder="Location (e.g. Sec 112 Row 8)" 
-                  className="bg-black text-white border border-[#27272a] p-2 rounded text-xs placeholder-[#71717a]"
-                />
-                <select 
-                  value={newIncidentCat} 
-                  onChange={(e: any) => setNewIncidentCat(e.target.value)} 
-                  className="bg-black text-white border border-[#27272a] p-2 rounded text-xs focus:outline-none"
-                >
-                  <option value="seat">Seat Damage</option>
-                  <option value="spill">Liquid Spill / Slip</option>
-                  <option value="gate">Gate Issue</option>
-                  <option value="other">Other Operations</option>
-                </select>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <input 
-                  type="text" 
-                  value={newIncidentDesc} 
-                  onChange={(e) => setNewIncidentDesc(e.target.value)} 
-                  placeholder="Short description..." 
-                  className="bg-black text-white border border-[#27272a] p-2 rounded text-xs placeholder-[#71717a]"
-                />
-                <select 
-                  value={newIncidentSeverity} 
-                  onChange={(e: any) => setNewIncidentSeverity(e.target.value)} 
-                  className="bg-black text-white border border-[#27272a] p-2 rounded text-xs focus:outline-none"
-                >
-                  <option value="low">Severity: Low</option>
-                  <option value="medium">Severity: Medium</option>
-                  <option value="high">Severity: High</option>
-                </select>
-              </div>
-              <button 
-                onClick={() => {
-                  if (!newIncidentLoc.trim() || !newIncidentDesc.trim()) return;
-                  const actionMsg = `Staff logged NEW ${newIncidentSeverity.toUpperCase()} incident: "${newIncidentDesc}" at ${newIncidentLoc}`;
-                  logRoleActivity(actionMsg);
-                  setIncidents(prev => [
-                    ...prev,
-                    {
-                      id: "inc-" + Date.now(),
-                      location: newIncidentLoc,
-                      category: newIncidentCat,
-                      desc: newIncidentDesc,
-                      status: "pending",
-                      severity: newIncidentSeverity,
-                      time: "Just logged"
-                    }
-                  ]);
-                  setNewIncidentLoc("");
-                  setNewIncidentDesc("");
-                }}
-                className="bg-red-600 hover:bg-red-500 text-white font-bold text-xs py-2 rounded uppercase"
-              >
-                🚨 Log Operations Incident
-              </button>
+            <button 
+              onClick={() => {
+                setEgressMode(!egressMode);
+                logRoleActivity(`Staff toggled stadium mode to: ${!egressMode ? "EGRESS/EXIT" : "STANDARD OPERATIONS"}`);
+              }}
+              className={`px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg ${
+                egressMode 
+                  ? "bg-amber-500 text-black shadow-amber-900/20" 
+                  : "bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-700"
+              }`}
+            >
+              {egressMode ? "⏹️ EXIT MODE ACTIVE" : "▶️ ACTIVATE EGRESS"}
+            </button>
+          </div>
+
+          <div className="col-span-12 md:col-span-4 rounded-3xl p-6 border border-[#27272a] bg-[#09090b] shadow-2xl flex flex-col justify-center relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-4 opacity-5">
+              <Zap className="w-24 h-24 text-emerald-500" />
+            </div>
+            <h4 className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-2">Venue Power Load</h4>
+            <div className="flex items-end gap-2">
+              <span className="text-4xl font-black text-white tracking-tighter">{powerLoad.value}</span>
+              <span className="text-lg font-bold text-emerald-400 mb-1">MW</span>
+            </div>
+            <div className="w-full h-1.5 bg-zinc-900 rounded-full mt-4 overflow-hidden">
+              <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${powerLoad.pct}%` }} />
             </div>
           </div>
         </div>
 
-        {/* Middle Column: Crowd density Heatmaps & checklists */}
-        <div className="col-span-full lg:col-span-4 flex flex-col gap-6">
-          {/* Heatmaps */}
-          <div className="rounded-2xl p-5 border border-[#27272a] bg-[#09090b] shadow-lg flex flex-col gap-4">
-            <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
-              <h3 className="font-bold text-xs tracking-wider uppercase text-white flex items-center gap-1.5">
-                🔥 Gate Crowd Density Heatmaps
-              </h3>
-              <span className="text-[10px] font-mono text-amber-500 uppercase">Alert Mode</span>
-            </div>
-
-            <div className="space-y-3">
-              {[
-                { name: "Gate A (Main Southern Access)", density: simulatedDensity.gate_a, original: 92 },
-                { name: "Gate B (North Rail Hub)", density: simulatedDensity.gate_b, original: 41 },
-                { name: "Gate C (East Shuttle Loop)", density: simulatedDensity.gate_c, original: 68 },
-                { name: "Gate D (West Rideshare Hub)", density: simulatedDensity.gate_d, original: 55 }
-              ].map((gate, index) => {
-                const currentDensity = gate.density;
-                return (
-                  <div key={index} className="space-y-1.5 text-xs">
-                    <div className="flex justify-between font-mono">
-                      <span className="text-zinc-400 font-bold uppercase text-[10px]">{gate.name}</span>
-                      <span className={`font-black ${
-                        currentDensity > 80 ? "text-red-500" : currentDensity > 50 ? "text-amber-400" : "text-[#22c55e]"
-                      }`}>{currentDensity}%</span>
-                    </div>
-                    <div className="w-full bg-[#18181b] h-2.5 rounded-full overflow-hidden border border-[#27272a]/30">
-                      <div 
-                        className={`h-full transition-all duration-500 ${
-                          currentDensity > 80 ? "bg-gradient-to-r from-red-600 to-red-400" :
-                          currentDensity > 50 ? "bg-gradient-to-r from-amber-500 to-amber-300" :
-                          "bg-gradient-to-r from-green-600 to-emerald-400"
-                        }`}
-                        style={{ width: `${currentDensity}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Slider to dispersal simulation */}
-            <div className="mt-2 p-3 rounded-lg border border-[#27272a]/50 bg-black/40">
-              <span className="text-[10px] font-mono font-bold uppercase text-zinc-500 block mb-1">Simulate Staff Dispersal Dispatch</span>
-              <div className="flex items-center gap-3">
-                <input 
-                  type="range" 
-                  min="0" 
-                  max="100" 
-                  defaultValue="0"
-                  onChange={(e) => {
-                    const val = Number(e.target.value);
-                    const factor = val / 100;
-                    setSimulatedDensity({
-                      gate_a: Math.max(45, Math.round(92 - (factor * 47))),
-                      gate_b: Math.max(30, Math.round(41 - (factor * 11))),
-                      gate_c: Math.max(35, Math.round(68 - (factor * 33))),
-                      gate_d: Math.max(40, Math.round(55 - (factor * 15)))
-                    });
-                    if (val % 25 === 0 || val === 100 || val === 0) {
-                      logRoleActivity(`Staff adjusted simulated steward dispatch level to: ${val}% capacity`);
-                    }
-                  }}
-                  className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-[#22c55e]"
-                />
-              </div>
-              <p className="text-[9px] text-[#71717a] font-mono mt-1">Slide right to deploy stewards. See crowd density drop in real-time!</p>
-            </div>
-          </div>
-
-          {/* Checklist */}
-          <div className="rounded-2xl p-5 border border-[#27272a] bg-[#09090b] shadow-lg flex flex-col gap-3">
-            <div className="flex items-center justify-between border-b border-[#27272a] pb-2">
-              <h3 className="font-bold text-xs tracking-wider uppercase text-white flex items-center gap-1.5">
-                <CheckSquare className="w-4 h-4 text-emerald-400" /> Shift Task Checklist
-              </h3>
-              <span className="text-[10px] font-mono text-zinc-500">
-                {staffTasks.filter(t => t.completed).length} / {staffTasks.length} Completed
-              </span>
-            </div>
-
-            <div className="space-y-2 max-h-[140px] overflow-y-auto">
-              {staffTasks.map((task) => (
-                <div 
-                  key={task.id} 
-                  onClick={() => {
-                    setStaffTasks(prev => prev.map(t => {
-                      if (t.id === task.id) {
-                        const nextVal = !t.completed;
-                        logRoleActivity(`Staff ${nextVal ? "completed" : "reopened"} shift task: "${t.text}"`);
-                        return { ...t, completed: nextVal };
-                      }
-                      return t;
-                    }));
-                  }}
-                  className="flex items-center gap-2.5 p-2 rounded hover:bg-zinc-950 transition-all cursor-pointer border border-transparent hover:border-[#27272a]/30 text-xs"
-                >
-                  <input 
-                    type="checkbox" 
-                    checked={task.completed} 
-                    readOnly 
-                    className="rounded border-[#27272a] text-[#22c55e] focus:ring-[#22c55e] h-3.5 w-3.5 cursor-pointer accent-[#22c55e]" 
-                  />
-                  <span className={`font-mono text-[10px] leading-relaxed ${task.completed ? "line-through text-zinc-600" : "text-zinc-300"}`}>
-                    {task.text}
+        {/* Main Columns Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          {/* Left Column: Enhanced Incident Management */}
+          <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
+            <div className="rounded-3xl p-5 border border-[#27272a] bg-[#09090b] shadow-xl flex flex-col h-full overflow-hidden">
+              <div className="flex items-center justify-between border-b border-[#27272a] pb-4 mb-4">
+                <div>
+                  <h3 className="font-black text-xs tracking-widest uppercase text-white flex items-center gap-2">
+                    <ShieldAlert className="text-red-500 w-4 h-4" /> Incident Management
+                  </h3>
+                  <p className="text-[9px] text-zinc-500 font-mono mt-0.5">Priority Dispatch Queue</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono font-black text-zinc-400 px-2 py-0.5 bg-zinc-900 rounded border border-zinc-800">
+                    {incidents.filter(i => i.status !== "resolved").length} Active
                   </span>
                 </div>
-              ))}
+              </div>
+
+              <div className="space-y-4 flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                {incidents.map((inc) => (
+                  <div key={inc.id} className="p-4 rounded-2xl border border-zinc-800/50 bg-zinc-950/40 hover:bg-zinc-950 transition-all flex flex-col gap-3 group">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2 h-2 rounded-full ${
+                            inc.severity === "high" ? "bg-red-500 animate-pulse" :
+                            inc.severity === "medium" ? "bg-amber-500" : "bg-emerald-500"
+                          }`} />
+                          <span className="font-black text-white text-[11px] uppercase tracking-wider">{inc.location}</span>
+                        </div>
+                        <p className="text-zinc-400 text-xs leading-relaxed">{inc.desc}</p>
+                      </div>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className="text-[9px] font-mono text-zinc-600">{inc.time}</span>
+                        <div 
+                          onClick={() => setExpandedImage({
+                            url: inc.image || getIncidentImage(inc.category),
+                            category: inc.category,
+                            desc: inc.desc,
+                            location: inc.location
+                          })}
+                          className="w-12 h-8 rounded bg-zinc-900 border border-zinc-800 overflow-hidden relative cursor-zoom-in group/img" 
+                          title="View Evidence"
+                        >
+                          <IncidentImage src={inc.image || getIncidentImage(inc.category)} category={inc.category} />
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/img:opacity-100 bg-black/40">
+                            <ZoomIn className="w-3 h-3 text-white" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2 border-t border-zinc-900">
+                      <div className="flex-1">
+                        <select 
+                          className="w-full bg-zinc-900 border border-zinc-800 text-[10px] font-mono text-zinc-400 p-1.5 rounded-lg focus:outline-none focus:border-emerald-500"
+                          value={assignedIncidentId === inc.id ? "assigned" : ""}
+                          onChange={(e) => {
+                            setAssignedIncidentId(inc.id);
+                            logRoleActivity(`Incident ${inc.id} assigned to ${e.target.value === "assigned" ? "Sector Lead" : "unassigned"}`);
+                          }}
+                        >
+                          <option value="">Assign To...</option>
+                          <option value="lead">Sector Lead</option>
+                          <option value="security">Security Team 4</option>
+                          <option value="medical">Paramedic Unit B</option>
+                          <option value="volunteer">Volunteer Support</option>
+                        </select>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setIncidents(prev => prev.map(p => {
+                            if (p.id !== inc.id) return p;
+                            const nextStatus: "pending" | "active" | "resolved" = 
+                              p.status === "pending" ? "active" : p.status === "active" ? "resolved" : "pending";
+                            logRoleActivity(`Incident ${p.id} updated to ${nextStatus.toUpperCase()}`);
+                            return { ...p, status: nextStatus, resolvedAt: nextStatus === "resolved" ? new Date().toLocaleTimeString() : undefined };
+                          }));
+                        }}
+                        className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border ${
+                          inc.status === "resolved" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" :
+                          inc.status === "active" ? "bg-amber-500/10 text-amber-400 border-amber-500/30" :
+                          "bg-zinc-800 text-zinc-400 border-zinc-700"
+                        }`}
+                      >
+                        {inc.status}
+                      </button>
+                    </div>
+                    {inc.resolvedAt && (
+                      <p className="text-[9px] font-mono text-emerald-500 text-right italic">Resolved at {inc.resolvedAt}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-[#27272a]">
+                <button 
+                  onClick={() => setShowLogIncidentModal(true)}
+                  className="w-full py-3 bg-red-600/10 hover:bg-red-600/20 text-red-500 border border-red-500/30 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all"
+                >
+                  Log New Incident Report
+                </button>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Right Column: Panic button and Live weather */}
-        <div className="col-span-full lg:col-span-3 flex flex-col gap-6">
-          {/* Secure Panic Button */}
-          <div className="rounded-2xl p-5 border border-[#27272a] bg-[#09090b] shadow-lg flex flex-col gap-4 items-center justify-center text-center h-full relative overflow-hidden">
-            <div className="absolute top-2 right-2 text-[8px] font-mono text-red-500 uppercase tracking-widest flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping"></span> SECURE PL
-            </div>
-
-            {!panicModeActive ? (
-              <div className="space-y-4 py-6">
-                <div className="p-3.5 rounded-full bg-red-600/10 border border-red-500/30 animate-pulse">
+          {/* Center Column: Venue Flows & Spatial Awareness */}
+          <div className="col-span-12 lg:col-span-5 flex flex-col gap-6">
+            {/* Map Placeholder with pins */}
+            <div className="rounded-3xl p-5 border border-[#27272a] bg-[#09090b] shadow-xl flex flex-col min-h-[400px] relative overflow-hidden">
+              <div className="flex items-center justify-between border-b border-[#27272a] pb-4 mb-4 z-10">
+                <div>
+                  <h3 className="font-black text-xs tracking-widest uppercase text-white flex items-center gap-2">
+                    <Navigation className="text-emerald-500 w-4 h-4" /> Spatial Awareness
+                  </h3>
+                  <p className="text-[9px] text-zinc-500 font-mono mt-0.5">Interactive Concourse Map v4.2</p>
+                </div>
+                <div className="flex gap-1">
+                  <button 
+                    onClick={() => setZoom(prev => Math.min(prev + 0.2, 3))}
+                    className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                    title="Zoom In"
+                  >
+                    <ZoomIn className="w-3.5 h-3.5" />
+                  </button>
                   <button 
                     onClick={() => {
-                      setPanicModeActive(true);
-                      setPanicCountdown(5);
-                      setPanicDispatched(false);
-                      logRoleActivity("Staff TRIGGERED Secure Distress Beacon - Dispatch countdown initiated");
-                      const interval = setInterval(() => {
-                        setPanicCountdown(prev => {
-                          if (prev === 1) {
-                            clearInterval(interval);
-                            setPanicDispatched(true);
-                            logRoleActivity("Staff DISTRESS BEACON DISPATCHED - Emergency tactical backup and paramedics deployed instantly!");
-                          }
-                          return prev - 1;
-                        });
-                      }, 1000);
+                      setZoom(prev => Math.max(prev - 0.2, 0.5));
+                      if (zoom <= 1) setPan({ x: 0, y: 0 });
                     }}
-                    className="w-24 h-24 bg-red-600 hover:bg-red-700 active:bg-red-800 rounded-full border-4 border-red-950 flex flex-col items-center justify-center text-black font-black uppercase text-xs tracking-wider cursor-pointer shadow-[0_0_20px_rgba(220,38,38,0.5)] transition-all transform hover:scale-105"
+                    className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition-colors"
+                    title="Zoom Out"
                   >
-                    🚨 PANIC
+                    <ZoomOut className="w-3.5 h-3.5" />
                   </button>
                 </div>
-                <div className="space-y-1 max-w-[200px] mx-auto">
-                  <h4 className="font-extrabold text-xs text-red-500 uppercase font-mono tracking-widest"> distress beacon</h4>
-                  <p className="text-[10px] text-zinc-500 font-mono leading-normal">
-                    Press for 5s countdown. (Demo: simulates secure dispatch of venue medical/security response units).
-                  </p>
+              </div>
+
+              <div 
+                className="flex-1 relative bg-zinc-950 rounded-2xl border border-zinc-800/40 overflow-hidden group select-none cursor-grab active:cursor-grabbing"
+                onMouseDown={(e) => {
+                  setIsDragging(true);
+                  setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+                }}
+                onMouseMove={(e) => {
+                  if (!isDragging) return;
+                  setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+                }}
+                onMouseUp={() => setIsDragging(false)}
+                onMouseLeave={() => setIsDragging(false)}
+              >
+                <div 
+                  className="w-full h-full transition-transform duration-100 ease-out origin-center flex items-center justify-center relative"
+                  style={{ transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)` }}
+                >
+                  {/* SVG MAP SIMULATION */}
+                  <svg viewBox="0 0 400 300" className="w-full h-full opacity-60 hover:opacity-80 transition-opacity">
+                    {/* Stadium Outer Ring */}
+                    <path d="M50,50 L350,50 L350,250 L50,250 Z" fill="none" stroke="#27272a" strokeWidth="2" />
+                    {/* Inner pitch */}
+                    <circle cx="200" cy="150" r="70" fill="none" stroke="#27272a" strokeWidth="2" />
+                    <line x1="200" y1="50" x2="200" y2="250" stroke="#27272a" strokeWidth="1" strokeDasharray="4 4" />
+                    <line x1="50" y1="150" x2="350" y2="150" stroke="#27272a" strokeWidth="1" strokeDasharray="4 4" />
+                    
+                    {/* Gate A Top */}
+                    <rect 
+                      x="170" y="45" width="60" height="12" rx="4"
+                      fill={activeMapFeature?.id === "gate_a" ? "#10b981" : "#1f2937"} 
+                      stroke={activeMapFeature?.id === "gate_a" ? "#34d399" : "#374151"}
+                      className="cursor-pointer hover:fill-emerald-800 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMapFeature({
+                          type: "gate",
+                          id: "gate_a",
+                          name: "Gate A (Main Entry)",
+                          status: "Highly Congested",
+                          density: 92,
+                          info: "Expected wait time: 15-20 mins. Restrooms, ADA assistance, and first aid are fully active nearby. Recommended alternate: Gate C.",
+                          color: "text-red-500 bg-red-500/10 border-red-500/20"
+                        });
+                      }}
+                    />
+                    <text x="200" y="51" fill="white" fontSize="7" fontWeight="bold" textAnchor="middle" dominantBaseline="central" className="pointer-events-none font-mono">GATE A</text>
+
+                    {/* Gate B Bottom */}
+                    <rect 
+                      x="170" y="243" width="60" height="12" rx="4"
+                      fill={activeMapFeature?.id === "gate_b" ? "#10b981" : "#1f2937"} 
+                      stroke={activeMapFeature?.id === "gate_b" ? "#34d399" : "#374151"}
+                      className="cursor-pointer hover:fill-emerald-800 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMapFeature({
+                          type: "gate",
+                          id: "gate_b",
+                          name: "Gate B (South Concourse)",
+                          status: "Normal Flow",
+                          density: 41,
+                          info: "Expected wait time: 3-5 mins. Shuttle terminal directly adjacent.",
+                          color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20"
+                        });
+                      }}
+                    />
+                    <text x="200" y="249" fill="white" fontSize="7" fontWeight="bold" textAnchor="middle" dominantBaseline="central" className="pointer-events-none font-mono">GATE B</text>
+
+                    {/* Gate C Left */}
+                    <rect 
+                      x="43" y="120" width="12" height="60" rx="4"
+                      fill={activeMapFeature?.id === "gate_c" ? "#10b981" : "#1f2937"} 
+                      stroke={activeMapFeature?.id === "gate_c" ? "#34d399" : "#374151"}
+                      className="cursor-pointer hover:fill-emerald-800 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMapFeature({
+                          type: "gate",
+                          id: "gate_c",
+                          name: "Gate C (West Gates)",
+                          status: "Moderate Flow",
+                          density: 68,
+                          info: "Expected wait time: 8-10 mins. Restrooms and elevator bank are fully operational.",
+                          color: "text-amber-500 bg-amber-500/10 border-amber-500/20"
+                        });
+                      }}
+                    />
+                    <text x="49" y="150" fill="white" fontSize="7" fontWeight="bold" textAnchor="middle" transform="rotate(-90 49 150)" dominantBaseline="central" className="pointer-events-none font-mono">GATE C</text>
+
+                    {/* Gate D Right */}
+                    <rect 
+                      x="345" y="120" width="12" height="60" rx="4"
+                      fill={activeMapFeature?.id === "gate_d" ? "#10b981" : "#1f2937"} 
+                      stroke={activeMapFeature?.id === "gate_d" ? "#34d399" : "#374151"}
+                      className="cursor-pointer hover:fill-emerald-800 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMapFeature({
+                          type: "gate",
+                          id: "gate_d",
+                          name: "Gate D (East Entrance)",
+                          status: "Moderate Flow",
+                          density: 55,
+                          info: "Expected wait time: 5-8 mins. Direct access to Section 100 concourse.",
+                          color: "text-amber-500 bg-amber-500/10 border-amber-500/20"
+                        });
+                      }}
+                    />
+                    <text x="351" y="150" fill="white" fontSize="7" fontWeight="bold" textAnchor="middle" transform="rotate(90 351 150)" dominantBaseline="central" className="pointer-events-none font-mono">GATE D</text>
+
+                    {/* Facilities Markers */}
+                    {/* Restroom (Top Left) */}
+                    <circle 
+                      cx="100" cy="90" r="12" 
+                      fill={activeMapFeature?.id === "fac_restroom" ? "#06b6d4" : "#1e1b4b"} 
+                      stroke="#06b6d4" strokeWidth="1.5" className="cursor-pointer hover:fill-cyan-800 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMapFeature({
+                          type: "facility",
+                          id: "fac_restroom",
+                          name: "Main Restrooms (Sec 104)",
+                          status: "Operational",
+                          info: "Status: Medium queue. Peak transit times saw 6 min waits. Cleaning schedule is hourly.",
+                          color: "text-cyan-400 bg-cyan-400/10 border-cyan-400/20"
+                        });
+                      }}
+                    />
+                    <text x="100" y="93" fill="white" fontSize="8" fontWeight="bold" textAnchor="middle" className="pointer-events-none font-mono">WC</text>
+
+                    {/* Food / Concessions (Top Right) */}
+                    <circle 
+                      cx="300" cy="90" r="12" 
+                      fill={activeMapFeature?.id === "fac_food" ? "#eab308" : "#422006"} 
+                      stroke="#eab308" strokeWidth="1.5" className="cursor-pointer hover:fill-yellow-800 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMapFeature({
+                          type: "facility",
+                          id: "fac_food",
+                          name: "Food Court & Concessions",
+                          status: "Busy",
+                          info: "8 out of 10 counters active. Average line length: 12 people. POS terminals are running smoothly.",
+                          color: "text-amber-400 bg-amber-400/10 border-amber-400/20"
+                        });
+                      }}
+                    />
+                    <text x="300" y="93" fill="white" fontSize="8" fontWeight="bold" textAnchor="middle" className="pointer-events-none font-mono">FD</text>
+
+                    {/* First Aid / Medical (Bottom Left) */}
+                    <circle 
+                      cx="100" cy="210" r="12" 
+                      fill={activeMapFeature?.id === "fac_medical" ? "#ef4444" : "#450a0a"} 
+                      stroke="#ef4444" strokeWidth="1.5" className="cursor-pointer hover:fill-red-800 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMapFeature({
+                          type: "facility",
+                          id: "fac_medical",
+                          name: "First Aid & Medical Post A",
+                          status: "On Standby",
+                          info: "Physician & 3 EMTs active. Supplies fully stocked. Direct line to regional hospital dispatcher is online.",
+                          color: "text-red-500 bg-red-500/10 border-red-500/20"
+                        });
+                      }}
+                    />
+                    <text x="100" y="213" fill="white" fontSize="10" fontWeight="bold" textAnchor="middle" className="pointer-events-none font-mono">+</text>
+
+                    {/* ADA Hub (Bottom Right) */}
+                    <circle 
+                      cx="300" cy="210" r="12" 
+                      fill={activeMapFeature?.id === "fac_ada" ? "#a855f7" : "#3b0764"} 
+                      stroke="#a855f7" strokeWidth="1.5" className="cursor-pointer hover:fill-purple-800 transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMapFeature({
+                          type: "facility",
+                          id: "fac_ada",
+                          name: "ADA & Accessibility Services",
+                          status: "Active",
+                          info: "Wheelchair escorts available immediately. Sensory room is open with low-stimulation environment active.",
+                          color: "text-purple-400 bg-purple-400/10 border-purple-400/20"
+                        });
+                      }}
+                    />
+                    <text x="300" y="213" fill="white" fontSize="7" fontWeight="bold" textAnchor="middle" className="pointer-events-none font-mono">ADA</text>
+                  </svg>
+
+                  {/* Incident Pins */}
+                  {incidents.filter(i => i.status !== "resolved").map((inc, idx) => {
+                    const positions = [
+                      { top: "35%", left: "45%" }, 
+                      { top: "65%", left: "25%" }, 
+                      { top: "25%", left: "75%" }, 
+                    ];
+                    const pos = positions[idx % positions.length];
+                    return (
+                      <motion.div 
+                        key={inc.id}
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute cursor-pointer z-20"
+                        style={{ 
+                          top: pos.top, 
+                          left: pos.left 
+                        }}
+                        title={`${inc.location}: ${inc.desc}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveMapFeature({
+                            type: "incident",
+                            id: inc.id,
+                            name: `Incident - ${inc.location}`,
+                            status: inc.severity.toUpperCase(),
+                            info: `${inc.desc} Reported at ${inc.time}. Status: Active.`,
+                            color: "text-red-500 bg-red-500/10 border-red-500/20"
+                          });
+                        }}
+                      >
+                        <div className={`w-6 h-6 rounded-full border-2 border-black flex items-center justify-center shadow-lg ${
+                          inc.severity === "high" ? "bg-red-500 animate-bounce" : "bg-amber-500"
+                        }`}>
+                          <AlertTriangle className="w-3.5 h-3.5 text-black" />
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+
+                <div className="absolute bottom-4 left-4 p-3 rounded-xl bg-black/85 backdrop-blur-md border border-zinc-800 text-[10px] font-mono space-y-1 z-10 pointer-events-none">
+                  <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Gate (Active)</div>
+                  <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-cyan-500" /> WC / Facilities</div>
+                  <div className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" /> Alert (Incident)</div>
                 </div>
               </div>
-            ) : (
-              <div className="space-y-4 py-4 w-full">
-                {panicDispatched ? (
-                  <div className="space-y-3">
-                    <span className="text-3xl animate-bounce block">🚨</span>
-                    <h4 className="text-xs font-black text-red-400 uppercase font-mono">DISTRESS DISPATCHED</h4>
-                    <p className="text-[10px] text-zinc-400 font-mono bg-red-950/20 border border-red-800/30 p-2.5 rounded-lg leading-normal">
-                      Demo dispatch successful. Locked coordinate sequence to selected venue. Simulated responder arrival estimated in 1-2 mins.
-                    </p>
-                    <button 
-                      onClick={() => setPanicModeActive(false)}
-                      className="text-[9px] text-zinc-500 hover:text-white uppercase underline font-mono"
-                    >
-                      Clear / Reset Beacon
-                    </button>
+
+              {/* Real-time Charts for Flow */}
+              <div className="mt-6 grid grid-cols-2 gap-4">
+                <div className="bg-zinc-950/50 p-4 rounded-2xl border border-zinc-800/40">
+                  <h4 className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3">Turnstile Flow Rate</h4>
+                  <div className="h-24 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={scanRateData}>
+                        <defs>
+                          <linearGradient id="colorRate" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <Area type="monotone" dataKey="rate" stroke="#10b981" fillOpacity={1} fill="url(#colorRate)" strokeWidth={2} />
+                      </AreaChart>
+                    </ResponsiveContainer>
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    <span className="text-3xl font-mono text-red-500 font-black animate-ping block">{panicCountdown}s</span>
-                    <h4 className="text-xs font-black text-white uppercase font-mono">INITIATING DISPATCH</h4>
-                    <select 
-                      value={selectedEmergencyCategory}
-                      onChange={(e: any) => setSelectedEmergencyCategory(e.target.value)}
-                      className="bg-zinc-950 border border-red-500/40 text-red-400 p-2 rounded text-[11px] font-mono font-bold w-full focus:outline-none"
-                    >
-                      <option value="security">ACTIVE SECURITY CONFLICT</option>
-                      <option value="medical">MEDICAL INFIRMARY ASSIST</option>
-                      <option value="hazard">FIRE / STRUCTURAL HAZARD</option>
-                    </select>
-                    <p className="text-[9px] text-zinc-500 font-mono">Selecting emergency category adapts response team weaponry/kits.</p>
-                    <button 
-                      onClick={() => setPanicModeActive(false)}
-                      className="w-full bg-zinc-800 text-zinc-300 font-bold font-mono text-[10px] py-1.5 rounded uppercase hover:bg-zinc-700"
-                    >
-                      ❌ CANCEL (Abate Alarm)
-                    </button>
+                  <div className="flex justify-between items-center mt-2">
+                    <span className="text-xs font-black text-white">1,240 / min</span>
+                    <span className="text-[9px] font-mono text-emerald-400">+12% vs last 15m</span>
                   </div>
-                )}
+                </div>
+                <div className="bg-zinc-950/50 p-4 rounded-2xl border border-zinc-800/40">
+                  <h4 className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3 flex items-center gap-1">
+                    <Droplets className="w-3 h-3 text-cyan-400" /> Restroom Queue
+                  </h4>
+                  <div className="space-y-2">
+                    {Object.entries(restroomStatus).map(([loc, status]) => (
+                      <div key={loc} className="flex justify-between items-center text-[10px]">
+                        <span className="text-zinc-500 uppercase">{loc}</span>
+                        <span className={`font-black uppercase ${
+                          status === "High" ? "text-red-500" : status === "Medium" ? "text-amber-400" : "text-emerald-500"
+                        }`}>{status}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
-            )}
+            </div>
+          </div>
+
+          {/* Right Column: Dispatch & Roster */}
+          <div className="col-span-12 lg:col-span-3 flex flex-col gap-6">
+            <div className="rounded-3xl p-5 border border-[#27272a] bg-[#09090b] shadow-xl flex flex-col h-full overflow-hidden">
+              <div className="flex items-center justify-between border-b border-[#27272a] pb-4 mb-4">
+                <div>
+                  <h3 className="font-black text-xs tracking-widest uppercase text-white flex items-center gap-2">
+                    <Users className="text-cyan-500 w-4 h-4" /> Personnel Dispatch
+                  </h3>
+                  <p className="text-[9px] text-zinc-500 font-mono mt-0.5">Staff Roster & Duty Logs</p>
+                </div>
+                <button 
+                  onClick={() => {
+                    setShowAddStaffModal(true);
+                  }}
+                  className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-cyan-400 hover:bg-zinc-800 transition-colors cursor-pointer"
+                  title="Add Staff"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 flex-1 overflow-y-auto pr-1 custom-scrollbar">
+                {staffRoster.map((staff, idx) => (
+                  <div key={idx} className="p-3 rounded-xl border border-zinc-800/40 bg-zinc-950/20 hover:bg-zinc-950 transition-all flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-8 h-8 rounded-full bg-zinc-900 border border-zinc-800 flex items-center justify-center text-[10px] font-bold text-white uppercase shrink-0">
+                        {staff.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-black text-white leading-none truncate">{staff.name}</p>
+                        <p className="text-[9px] text-zinc-500 uppercase font-mono mt-1 truncate">{staff.role} • {staff.zone}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className={`w-1.5 h-1.5 rounded-full ${staff.status === "active" ? "bg-emerald-500" : "bg-amber-500"}`} />
+                      <button 
+                        onClick={() => {
+                          setChattingWithStaff(staff);
+                          setShowChat(true);
+                        }}
+                        className="p-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-cyan-400 transition-colors"
+                        title="Contact Staff"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Direct Supervisor Chat */}
+              <div className="mt-6 pt-4 border-t border-zinc-900">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <Volume2 className="w-3 h-3 text-emerald-400" /> Supervisor Channel
+                  </h4>
+                  <button
+                    onClick={() => {
+                      if (window.confirm("Clear all supervisor chat messages?")) {
+                        setSupervisorChat([]);
+                        localStorage.removeItem("stadiumiq_supervisor_chat");
+                      }
+                    }}
+                    className="flex items-center gap-1 text-[9px] font-mono text-zinc-600 hover:text-red-400 font-bold uppercase transition-colors"
+                  >
+                    <Trash2 className="w-2.5 h-2.5" />
+                    Clear
+                  </button>
+                </div>
+                <div className="bg-zinc-950 rounded-xl border border-zinc-800/50 p-3 h-32 overflow-y-auto space-y-2 mb-3">
+                  {supervisorChat.map((msg, idx) => (
+                    <div key={idx} className="text-[10px] font-mono leading-relaxed">
+                      <span className="text-emerald-500 font-black uppercase mr-1">{msg.sender}:</span>
+                      <span className="text-zinc-400">{msg.text}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    value={supervisorInput}
+                    onChange={(e) => setSupervisorInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        const text = supervisorInput.trim();
+                        if (!text) return;
+                        setSupervisorChat(prev => [...prev, { sender: "Admin", text, time: "18:05" }]);
+                        setSupervisorInput("");
+                        setTimeout(() => {
+                          const responses = [
+                            { sender: "Security Lead", text: "Received, dispatching units to back you up." },
+                            { sender: "Steward Lead", text: "Copy that, volunteers are repositioning as requested." },
+                            { sender: "Medical Coord", text: "Understood, ambulance crew is on standby." },
+                            { sender: "Sector Lead", text: "Roger that. All hands on deck. Keeping you updated." }
+                          ];
+                          const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+                          setSupervisorChat(prev => [...prev, randomResponse]);
+                        }, 1000);
+                      }
+                    }}
+                    placeholder="Type dispatch order..." 
+                    className="w-full bg-zinc-950 border border-zinc-800 p-2.5 pr-10 rounded-xl text-[11px] placeholder-zinc-700 text-white focus:outline-none focus:border-emerald-500"
+                  />
+                  <button 
+                    onClick={() => {
+                      const text = supervisorInput.trim();
+                      if (!text) return;
+                      setSupervisorChat(prev => [...prev, { sender: "Admin", text, time: "18:05" }]);
+                      setSupervisorInput("");
+                      setTimeout(() => {
+                        const responses = [
+                          { sender: "Security Lead", text: "Received, dispatching units to back you up." },
+                          { sender: "Steward Lead", text: "Copy that, volunteers are repositioning as requested." },
+                          { sender: "Medical Coord", text: "Understood, ambulance crew is on standby." },
+                          { sender: "Sector Lead", text: "Roger that. All hands on deck. Keeping you updated." }
+                        ];
+                        const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+                        setSupervisorChat(prev => [...prev, randomResponse]);
+                      }, 1000);
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-emerald-500 hover:text-emerald-400 p-1"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
+
       </div>
     );
   };
 
   const renderVolunteerDashboard = () => {
+    const activeKey = selectedStadium === "st_mbs" ? "st_mercedes" : selectedStadium;
+    const details = volunteerDetailsMap[activeKey] || volunteerDetailsMap["st_sofi"];
+    
+    const isShiftActive = (shiftHours: string, stadiumId: string): boolean => {
+      const offsets: Record<string, number> = {
+        st_sofi: -7,
+        st_metlife: -4,
+        st_mercedes: -4,
+        st_azteca: -6,
+        st_bcplace: -7
+      };
+      const offset = offsets[stadiumId] ?? -4;
+      
+      const now = new Date();
+      const utcHours = now.getUTCHours();
+      const utcMinutes = now.getUTCMinutes();
+      
+      let localHours = (utcHours + offset + 24) % 24;
+      let localMinutes = utcMinutes;
+      const currentMinutesFromMidnight = localHours * 60 + localMinutes;
+      
+      try {
+        const parts = shiftHours.split("-").map(p => p.trim());
+        if (parts.length !== 2) return false;
+        
+        const parseTime = (timeStr: string) => {
+          const [time, meridian] = timeStr.split(" ");
+          const [h, m] = time.split(":").map(Number);
+          let hour = h;
+          if (meridian === "PM" && hour < 12) hour += 12;
+          if (meridian === "AM" && hour === 12) hour = 0;
+          return hour * 60 + m;
+        };
+        
+        const startMinutes = parseTime(parts[0]);
+        const endMinutes = parseTime(parts[1]);
+        
+        if (startMinutes <= endMinutes) {
+          return currentMinutesFromMidnight >= startMinutes && currentMinutesFromMidnight <= endMinutes;
+        } else {
+          return currentMinutesFromMidnight >= startMinutes || currentMinutesFromMidnight <= endMinutes;
+        }
+      } catch (e) {
+        console.error("Error parsing shift hours", e);
+        return false;
+      }
+    };
+
+    const isWithinShift = isShiftActive(details.shiftHours, activeKey);
+    const isAwaitingHandshake = pendingHandshake[activeKey] || false;
+
+    const registeredName = user?.displayName || user?.email || "Jane Doe";
+    const initials = registeredName
+      .split(" ")
+      .filter(Boolean)
+      .map((n: string) => n[0])
+      .join("")
+      .substring(0, 2)
+      .toUpperCase() || "JD";
+
     return (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch w-full animate-fadeIn">
+        {/* Top Full-Width Header: Volunteer Digital ID / Entry Pass & Offline Status */}
+        <div className="col-span-full rounded-2xl p-4 md:p-5 border border-emerald-500/20 bg-gradient-to-r from-[#09090b] via-[#0d0d11] to-[#09090b] shadow-xl flex flex-col md:flex-row items-center justify-between gap-4 relative overflow-hidden">
+          {/* Subtle decoration */}
+          <div className="absolute right-0 top-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+          
+          <div className="flex items-center gap-4 w-full md:w-auto">
+            <div className="w-12 h-12 rounded-xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-emerald-400 font-black relative shadow-inner overflow-hidden flex-shrink-0">
+              <div className="absolute inset-0 bg-gradient-to-tr from-emerald-500/10 to-transparent" />
+              <Users className="w-6 h-6 text-emerald-400" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-white font-black text-sm uppercase tracking-wider">FIFA Steward Accreditation</span>
+                <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[9px] font-mono font-black rounded border border-emerald-500/30 tracking-widest uppercase">
+                  Level 1 • ALL ACCESS
+                </span>
+              </div>
+              <div className="flex items-center gap-2 mt-1 text-[10px] font-mono text-zinc-500">
+                <span>HOLDER: {registeredName}</span>
+                <span className="text-zinc-700">•</span>
+                <span>ID: {details.barcodeId}</span>
+                <span className="text-zinc-700">•</span>
+                <span className="text-emerald-400 flex items-center gap-1 font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Offline Sync Active
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Barcode and Scannable QR Code */}
+          <button 
+            onClick={() => setIsPassModalOpen(true)}
+            className="group flex items-center gap-4 w-full md:w-auto justify-between md:justify-end bg-zinc-950/80 p-3.5 rounded-xl border border-emerald-500/20 hover:border-emerald-400/50 transition-all text-left cursor-pointer hover:shadow-[0_0_15px_rgba(16,185,129,0.1)] focus:outline-none"
+            title="Click to enlarge scannable tunnel pass"
+          >
+            <div className="flex flex-col">
+              <span className="text-[9px] font-mono text-zinc-400 uppercase tracking-widest text-right flex items-center gap-1 md:justify-end">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Venue Tunnel Access Pass
+              </span>
+              {/* Mock Barcode */}
+              <div className="flex items-end gap-[2.5px] h-9 mt-1.5 opacity-90 group-hover:opacity-100 transition-opacity justify-end">
+                {[3, 1, 4, 2, 1, 3, 1, 4, 2, 3, 1, 2, 4, 1, 3, 1, 2, 4, 2, 1].map((w, idx) => (
+                  <div key={idx} className="bg-white h-full rounded-sm" style={{ width: `${w}px` }} />
+                ))}
+              </div>
+              <span className="text-[8px] font-mono text-zinc-400 tracking-[0.25em] mt-1 text-center group-hover:text-emerald-400 transition-colors">*{details.barcodeId}*</span>
+            </div>
+            <div className="relative w-14 h-14 bg-white p-1 rounded-lg flex items-center justify-center shadow-md group-hover:scale-105 transition-transform flex-shrink-0">
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&color=000000&bgcolor=ffffff&data=${encodeURIComponent(`VOLUNTEER-ACC-2026:${details.barcodeId}:STADIUM-${selectedStadium}:${qrSeed}`)}`}
+                alt="Tunnel Pass QR"
+                className="w-full h-full object-contain"
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-black text-[7px] font-black font-mono px-1 rounded shadow flex items-center gap-0.5">
+                <Maximize2 className="w-2 h-2" /> ZOOM
+              </div>
+            </div>
+          </button>
+        </div>
+
+        {/* Dynamic Walkie-Talkie Communication Link */}
+        {activeWalkieTalkie && (
+          <div className="col-span-full rounded-2xl p-5 border border-emerald-500/30 bg-[#0d0d11] shadow-2xl relative overflow-hidden animate-fadeIn flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-r from-emerald-500/5 to-transparent pointer-events-none" />
+            
+            <div className="flex items-center gap-4 w-full md:w-auto">
+              <div className="w-12 h-12 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 animate-pulse flex-shrink-0">
+                <Radio className="w-6 h-6" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-black text-emerald-400 uppercase tracking-widest animate-pulse">
+                    ● ACTIVE VOICE TRANSMISSION
+                  </span>
+                  <span className="text-[9px] font-mono text-zinc-500">
+                    FREQ: {details.contactFreq}
+                  </span>
+                </div>
+                <h4 className="text-white font-black text-sm uppercase mt-0.5">
+                  Connected with: {activeWalkieTalkie}
+                </h4>
+                {/* Audio Waveform animation */}
+                <div className="flex items-center gap-1 h-6 mt-1.5">
+                  {[...Array(16)].map((_, i) => (
+                    <div 
+                      key={i} 
+                      className="w-1 bg-emerald-500 rounded-full transition-all duration-150"
+                      style={{ 
+                        height: isRadioTransmitting ? `${Math.floor(Math.random() * 20) + 4}px` : '4px',
+                        animationDelay: `${i * 0.05}s`
+                      }} 
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Push To Talk button & control */}
+            <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+              <div className="text-right hidden md:block">
+                <span className="block text-[8px] font-mono text-zinc-500 uppercase tracking-wider">RADIO LOGS (LATEST)</span>
+                <span className="block text-[10px] font-mono text-zinc-400 italic">"{radioLogs[radioLogs.length - 1]}"</span>
+              </div>
+              <button
+                onMouseDown={() => {
+                  setIsRadioTransmitting(true);
+                  setRadioLogs(prev => [...prev, `Steward (You): Copy that operations, ${details.stationName} is secure.`]);
+                  logRoleActivity(`Volunteer transmitted message over radio at ${details.venueName}`);
+                }}
+                onMouseUp={() => setIsRadioTransmitting(false)}
+                onTouchStart={() => {
+                  setIsRadioTransmitting(true);
+                  setRadioLogs(prev => [...prev, `Steward (You): Copy that operations, ${details.stationName} is secure.`]);
+                }}
+                onTouchEnd={() => setIsRadioTransmitting(false)}
+                className={`px-5 py-3 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all select-none ${
+                  isRadioTransmitting 
+                    ? "bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.5)] scale-95" 
+                    : "bg-emerald-500 hover:bg-emerald-400 text-black font-black"
+                }`}
+              >
+                {isRadioTransmitting ? "🎙️ RELEASE TO SEND" : "🎙️ HOLD TO TRANSMIT"}
+              </button>
+              <button 
+                onClick={() => setActiveWalkieTalkie(null)}
+                className="p-3 bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white rounded-xl text-xs font-mono uppercase tracking-widest transition-all"
+              >
+                Exit
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Left: Shift check in assignment and stats */}
         <div className="col-span-full lg:col-span-4 flex flex-col gap-6">
           {/* Shift Check-In */}
@@ -2652,10 +3649,29 @@ export default function App() {
               <h3 className="font-bold text-xs tracking-wider uppercase text-white flex items-center gap-1.5">
                 🕒 Timecard Shift Check-In
               </h3>
-              <span className={`text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded ${
-                volunteerCheckedIn ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" : "bg-zinc-800 text-zinc-400 border border-zinc-700"
+              <span className={`text-[9px] font-mono font-bold uppercase px-2 py-0.5 rounded flex items-center gap-1 ${
+                volunteerCheckedIn 
+                  ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20" 
+                  : isWithinShift 
+                    ? "bg-amber-500/10 text-amber-400 border border-amber-500/30 animate-pulse" 
+                    : "bg-zinc-800 text-zinc-400 border border-zinc-700"
               }`}>
-                {volunteerCheckedIn ? "ACTIVE" : "INACTIVE"}
+                {volunteerCheckedIn ? (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                    ACTIVE
+                  </>
+                ) : isWithinShift ? (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                    SHIFT ACTIVE - PENDING CLOCK-IN
+                  </>
+                ) : (
+                  <>
+                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
+                    INACTIVE
+                  </>
+                )}
               </span>
             </div>
 
@@ -2663,39 +3679,189 @@ export default function App() {
               <div className="p-3 rounded-lg bg-zinc-950 border border-[#27272a]/50 space-y-1.5">
                 <div className="flex justify-between">
                   <span className="text-zinc-500">ASSIGNED VENUE:</span>
-                  <span className="text-white font-bold">SoFi Stadium (LA)</span>
+                  <span className="text-white font-bold">{details.venueName}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-500">SHIFT TIME:</span>
-                  <span className="text-white font-bold">{volunteerShiftHours}</span>
+                  <span className="text-white font-bold">{details.shiftHours}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-zinc-500">PROXIMITY GPS:</span>
-                  <span className="text-cyan-400 font-bold">{volunteerDistance} km (IN RANGE)</span>
+                  <span className="text-cyan-400 font-bold">{details.distance} km (IN RANGE)</span>
+                </div>
+
+                {/* Direct Stadium Dropdown Switcher */}
+                <div className="flex flex-col gap-1.5 pt-2 border-t border-zinc-900 mt-1">
+                  <span className="text-[10px] text-zinc-500 uppercase tracking-wider">Select Assigned Stadium:</span>
+                  <select
+                    value={selectedStadium}
+                    onChange={(e) => {
+                      setSelectedStadium(e.target.value);
+                      logRoleActivity(`Volunteer switched active stadium to ${e.target.value}`);
+                    }}
+                    className="w-full bg-zinc-900 border border-[#27272a] text-white rounded p-2 font-mono text-xs cursor-pointer focus:outline-none focus:border-cyan-500"
+                  >
+                    <option value="st_sofi">SoFi Stadium (Los Angeles)</option>
+                    <option value="st_metlife">MetLife Stadium (New Jersey)</option>
+                    <option value="st_mercedes">Mercedes-Benz Stadium (Atlanta)</option>
+                    <option value="st_azteca">Estadio Azteca (Mexico City)</option>
+                    <option value="st_bcplace">BC Place (Vancouver)</option>
+                  </select>
                 </div>
               </div>
 
               {!volunteerCheckedIn ? (
-                <button 
-                  onClick={() => {
-                    setVolunteerCheckedIn(true);
-                    logRoleActivity("Volunteer clocked in at SoFi Stadium (LA) with Geo-Verification");
-                  }}
-                  className="w-full bg-cyan-500 text-black font-black text-xs py-2.5 rounded-lg hover:bg-cyan-400 uppercase transition-all"
-                >
-                  ⏱️ Clock In (Geo-Verify)
-                </button>
+                !isAwaitingHandshake ? (
+                  <button 
+                    onClick={() => {
+                      setPendingHandshake(prev => ({ ...prev, [activeKey]: true }));
+                      setSupervisorPinInput("");
+                      setPinError("");
+                      logRoleActivity(`Volunteer initiated check-in for ${details.venueName}. Awaiting captain approval.`);
+                    }}
+                    className={`w-full text-black font-black text-xs py-2.5 rounded-lg uppercase transition-all flex items-center justify-center gap-1.5 cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+                      isWithinShift 
+                        ? "bg-amber-400 hover:bg-amber-300 shadow-[0_0_15px_rgba(245,158,11,0.25)]" 
+                        : "bg-cyan-500 hover:bg-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)]"
+                    }`}
+                  >
+                    ⏱️ Clock In (Geo-Verify)
+                  </button>
+                ) : (
+                  <div className="p-3 bg-zinc-950 border border-amber-500/20 rounded-xl space-y-3 text-left">
+                    <div className="flex items-center justify-between border-b border-zinc-900 pb-2">
+                      <span className="text-[10px] text-amber-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                        Handshake Verification Required
+                      </span>
+                      <button 
+                        onClick={() => {
+                          setPendingHandshake(prev => ({ ...prev, [activeKey]: false }));
+                          setSupervisorPinInput("");
+                          setPinError("");
+                        }}
+                        className="text-[9px] font-mono text-zinc-500 hover:text-zinc-300 uppercase underline"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+
+                    <p className="text-[11px] text-zinc-400 font-sans leading-relaxed">
+                      Awaiting Captain <strong className="text-white">{details.captain}</strong>'s wireless Bluetooth/NFC validation handshake...
+                    </p>
+
+                    <button 
+                      onClick={() => {
+                        try {
+                          const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                          const osc = audioCtx.createOscillator();
+                          const gain = audioCtx.createGain();
+                          osc.connect(gain);
+                          gain.connect(audioCtx.destination);
+                          osc.type = "sine";
+                          osc.frequency.setValueAtTime(1000, audioCtx.currentTime);
+                          gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                          osc.start();
+                          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                          osc.stop(audioCtx.currentTime + 0.3);
+                        } catch (err) {}
+
+                        setVolunteerCheckedIn(true);
+                        setPendingHandshake(prev => ({ ...prev, [activeKey]: false }));
+                        logRoleActivity(`Volunteer clock-in approved via Captain ${details.captain} NFC Handshake`);
+                      }}
+                      className="w-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-500/50 text-emerald-400 text-[10px] font-mono font-bold py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      📲 Simulate NFC Tap with Captain's Device
+                    </button>
+
+                    <div className="relative flex py-1.5 items-center">
+                      <div className="flex-grow border-t border-zinc-900"></div>
+                      <span className="flex-shrink mx-3 text-[9px] font-mono text-zinc-500 uppercase">OR ENTER OVERRIDE PIN</span>
+                      <div className="flex-grow border-t border-zinc-900"></div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex gap-1.5">
+                        <div className="relative flex-1">
+                          <input 
+                            type={showSupervisorPin ? "text" : "password"}
+                            maxLength={4}
+                            value={supervisorPinInput}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, "");
+                              setSupervisorPinInput(val);
+                              setPinError("");
+                            }}
+                            placeholder="4-digit Pin"
+                            className="w-full bg-zinc-900 border border-zinc-800 rounded p-1.5 pr-8 text-center text-xs font-mono tracking-[0.4em] text-white focus:outline-none focus:border-cyan-500 placeholder:tracking-normal placeholder:text-[9px]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowSupervisorPin(!showSupervisorPin)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 focus:outline-none cursor-pointer"
+                            title={showSupervisorPin ? "Hide PIN" : "Show PIN"}
+                          >
+                            {showSupervisorPin ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                          </button>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            if (supervisorPinInput === "2026") {
+                              try {
+                                const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                                const osc = audioCtx.createOscillator();
+                                const gain = audioCtx.createGain();
+                                osc.connect(gain);
+                                gain.connect(audioCtx.destination);
+                                osc.type = "sine";
+                                osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+                                gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+                                osc.start();
+                                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+                                osc.stop(audioCtx.currentTime + 0.25);
+                              } catch (e) {}
+
+                              setVolunteerCheckedIn(true);
+                              setPendingHandshake(prev => ({ ...prev, [activeKey]: false }));
+                              setSupervisorPinInput("");
+                              logRoleActivity(`Volunteer clock-in approved via Captain ${details.captain} override PIN code`);
+                            } else {
+                              setPinError("Invalid PIN. (Try '2026')");
+                            }
+                          }}
+                          className="px-3 bg-cyan-600 hover:bg-cyan-500 text-black font-mono text-[10px] font-black uppercase rounded transition-colors cursor-pointer"
+                        >
+                          Verify
+                        </button>
+                      </div>
+                      {pinError ? (
+                        <p className="text-[9px] text-red-400 font-mono text-center">{pinError}</p>
+                      ) : (
+                        <p className="text-[8px] text-zinc-500 font-mono text-center">
+                          (Simulation Hint: {details.captain}'s supervisor code is <strong className="text-zinc-400">2026</strong>)
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )
               ) : (
-                <div className="space-y-2">
-                  <div className="text-center p-2 rounded bg-cyan-950/20 border border-cyan-500/20 text-cyan-300 text-[11px]">
-                    ✓ Checked In at {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • Shift duration active
+                <div className="space-y-2 text-left">
+                  <div className="text-center p-2.5 rounded bg-cyan-950/20 border border-cyan-500/20 text-cyan-300 text-[11px] flex flex-col gap-1 font-sans">
+                    <span className="font-bold flex items-center justify-center gap-1.5 text-white">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      ✓ Checked In at {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-widest">
+                      Approved & Signed by Captain {details.captain}
+                    </span>
                   </div>
                   <button 
                     onClick={() => {
                       setVolunteerCheckedIn(false);
-                      logRoleActivity("Volunteer clocked out from SoFi Stadium (LA)");
+                      logRoleActivity(`Volunteer clocked out from ${details.venueName}`);
                     }}
-                    className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-xs py-2 rounded-lg uppercase"
+                    className="w-full bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-bold text-xs py-2 rounded-lg uppercase cursor-pointer"
                   >
                     Clock Out
                   </button>
@@ -2710,23 +3876,98 @@ export default function App() {
               <h3 className="font-bold text-xs tracking-wider uppercase text-white flex items-center gap-1.5">
                 📍 Assigned Station
               </h3>
-              <span className="text-[10px] font-mono text-zinc-500">Station B</span>
+              <span className="text-[10px] font-mono text-zinc-500">{details.stationName}</span>
             </div>
 
             <div className="space-y-2.5 text-xs">
-              <p className="text-white font-bold">Information Desk B (North Plaza - Sec 112)</p>
-              <div className="p-3 bg-zinc-950 rounded border border-[#27272a]/50 font-mono text-[10px] space-y-1.5 text-zinc-400">
-                <p>🙋 <span className="font-bold text-white">CAPTAIN:</span> Jane Doe (Sector Operations Lead)</p>
-                <p>📞 <span className="font-bold text-white">CONTACT:</span> Sector B Radio Ch. 12</p>
-                <p>🗒️ <span className="font-bold text-white">DUTIES:</span> Distribute sensory kits, assist ticket scanning, provide wayfinding support to Gate C.</p>
+              <p className="text-white font-bold">{details.stationLoc}</p>
+              <div className="p-3 bg-zinc-950 rounded border border-[#27272a]/50 font-mono text-[10px] space-y-2 text-zinc-400">
+                <div className="flex items-center justify-between">
+                  <p>🙋 <span className="font-bold text-white">CAPTAIN:</span> {details.captain}</p>
+                  <button 
+                    onClick={() => {
+                      setActiveWalkieTalkie(details.captain);
+                      logRoleActivity(`Volunteer opened radio channel with ${details.captain}`);
+                    }}
+                    className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-all flex items-center gap-1 text-[8px] font-bold uppercase tracking-wider"
+                    title="Launch Walkie Talkie Link"
+                  >
+                    <Radio className="w-3 h-3 text-emerald-400 animate-pulse" /> Call
+                  </button>
+                </div>
+                
+                <div className="flex items-center justify-between pt-1 border-t border-zinc-900">
+                  <p>📞 <span className="font-bold text-white">CONTACT:</span> {details.contactChannel}</p>
+                  <button 
+                    onClick={() => {
+                      setActiveWalkieTalkie(details.contactChannel);
+                      logRoleActivity(`Volunteer opened radio channel on ${details.contactChannel}`);
+                    }}
+                    className="p-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-all flex items-center gap-1 text-[8px] font-bold uppercase tracking-wider"
+                    title="Connect Radio channel"
+                  >
+                    <Radio className="w-3 h-3 text-emerald-400" /> Connect
+                  </button>
+                </div>
+
+                <p className="pt-1.5 border-t border-zinc-900">🗒️ <span className="font-bold text-white">DUTIES:</span> {details.duties}</p>
               </div>
+            </div>
+          </div>
+
+          {/* One-Tap Emergency / SOS Reporter */}
+          <div className="rounded-2xl p-5 border border-red-500/20 bg-gradient-to-b from-[#1a0a0a]/30 to-[#09090b] shadow-lg flex flex-col gap-3 relative overflow-hidden">
+            <div className="absolute top-0 inset-x-0 h-[1.5px] bg-gradient-to-r from-transparent via-red-500/40 to-transparent" />
+            <div className="flex items-center justify-between border-b border-red-500/10 pb-2">
+              <h3 className="font-black text-xs tracking-widest uppercase text-red-500 flex items-center gap-1.5">
+                <ShieldAlert className="w-3.5 h-3.5 text-red-500 animate-pulse" /> 1-Tap SOS Reporter
+              </h3>
+              <span className="text-[8px] font-mono text-red-400/60 font-black tracking-widest uppercase bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/20">
+                Auto-Geotagged
+              </span>
+            </div>
+
+            <p className="text-[10px] text-zinc-400">
+              Instantly logs high-priority incident at <span className="text-white font-bold">{details.stationLoc}</span>.
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              {details.sosTriggers.map((sos, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    const newId = `inc-sos-${Date.now().toString().slice(-4)}`;
+                    const newInc = {
+                      id: newId,
+                      location: details.stationLoc,
+                      category: sos.category,
+                      desc: `[SOS REPORT] ${sos.desc}`,
+                      status: "pending" as const,
+                      severity: "high" as const,
+                      time: "Just now",
+                      image: getIncidentImage(sos.category)
+                    };
+                    setIncidents(prev => [newInc, ...prev]);
+                    logRoleActivity(`SOS TRIGGERED: ${sos.label} alert logged at ${details.stationLoc}`);
+                    
+                    setBroadcasts(prev => [
+                      `🚨 [SOS COMMAND ALERT] ${sos.label.toUpperCase()} emergency at ${details.stationLoc}! Coordinator dispatching responders.`,
+                      ...prev
+                    ]);
+                    alert(`✓ SOS TRANSMITTED! ${sos.label} Alert successfully sent to Stadium Command. Local dispatch active.`);
+                  }}
+                  className="py-2.5 px-2 bg-red-600/10 hover:bg-red-600/20 text-red-400 border border-red-500/20 hover:border-red-500/40 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all flex flex-col items-center justify-center text-center gap-1"
+                >
+                  {sos.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Center: FAQ AI cheat sheet search assistant */}
+        {/* Center: FAQ AI cheat sheet search assistant & Perks */}
         <div className="col-span-full lg:col-span-5 flex flex-col gap-6">
-          <div className="rounded-2xl p-5 border border-[#27272a] bg-[#09090b] shadow-lg flex flex-col gap-4 h-full">
+          <div className="rounded-2xl p-5 border border-[#27272a] bg-[#09090b] shadow-lg flex flex-col gap-4">
             <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
               <div>
                 <h3 className="font-bold text-xs tracking-wider uppercase text-white flex items-center gap-1.5">
@@ -2794,7 +4035,7 @@ export default function App() {
             </div>
 
             {/* Playbook result output */}
-            <div className="flex-1 p-3.5 rounded-xl border border-zinc-800 bg-zinc-950 font-mono text-[11px] leading-relaxed max-h-[170px] overflow-y-auto">
+            <div className="p-3.5 rounded-xl border border-zinc-800 bg-zinc-950 font-mono text-[11px] leading-relaxed max-h-[170px] overflow-y-auto">
               {faqSearchResult ? (
                 <div className="space-y-1.5 animate-fadeIn">
                   <div className="flex items-center gap-1 text-cyan-400 font-bold uppercase text-[10px]">
@@ -2803,15 +4044,120 @@ export default function App() {
                   <p className="text-zinc-300 whitespace-pre-line">{faqSearchResult}</p>
                 </div>
               ) : (
-                <div className="h-full flex items-center justify-center text-center text-zinc-600 italic p-4">
+                <div className="text-center text-zinc-600 italic p-4">
                   Tap a tag above or enter a keyword to retrieve authorized coordinator playbook answers instantly.
                 </div>
               )}
             </div>
           </div>
+
+          {/* Perks & Break Voucher Module */}
+          <div className="rounded-2xl p-5 border border-zinc-800 bg-[#09090b] shadow-lg flex flex-col gap-3">
+            <div className="flex items-center justify-between border-b border-[#27272a] pb-2">
+              <h3 className="font-bold text-xs tracking-wider uppercase text-white flex items-center gap-1.5">
+                🏆 Perks & Break Vouchers
+              </h3>
+              <span className="text-[10px] font-mono text-cyan-400 font-bold">{details.perksHours} hrs served</span>
+            </div>
+
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <div className="flex justify-between text-[10px] font-mono text-zinc-400">
+                  <span>STRETCH MILESTONE:</span>
+                  <span>{details.perksHours} / 20.0 Hrs</span>
+                </div>
+                <div className="w-full h-1.5 bg-zinc-900 rounded-full overflow-hidden">
+                  <div className="h-full bg-cyan-500 rounded-full" style={{ width: details.perksPercent }} />
+                </div>
+                <div className="flex justify-between text-[8px] font-mono text-zinc-500">
+                  <span>{details.perksMilestone} (Unlocked)</span>
+                  <span>Golden Helper Pass ({details.perksPercent})</span>
+                </div>
+              </div>
+
+              <div className="p-3 bg-zinc-950 rounded border border-[#27272a]/50 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-400 font-mono text-[10px]">BREAK STATUS:</span>
+                  <button 
+                    onClick={() => {
+                      setVolunteerOnBreak(!volunteerOnBreak);
+                      logRoleActivity(`Volunteer toggled shift break mode to: ${!volunteerOnBreak ? "ON BREAK" : "OFF BREAK"}`);
+                    }}
+                    className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider transition-colors ${
+                      volunteerOnBreak 
+                        ? "bg-amber-500/10 text-amber-400 border border-amber-500/30" 
+                        : "bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700"
+                    }`}
+                  >
+                    {volunteerOnBreak ? "⏸️ On Break" : "▶️ Go On Break"}
+                  </button>
+                </div>
+                
+                <p className="text-[9px] text-zinc-500 font-mono mt-1.5 leading-relaxed">
+                  Meal voucher QR Code activates strictly during active designated break periods.
+                </p>
+                
+                {volunteerOnBreak ? (
+                  <div className="mt-3 p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl flex flex-col items-center gap-2 animate-fadeIn">
+                    <span className="text-[10px] text-emerald-400 font-mono font-black tracking-widest uppercase">
+                      ✓ DIGITAL MEAL VOUCHER ACTIVE
+                    </span>
+                    <div 
+                      className="w-24 h-24 bg-white p-1 rounded-lg flex items-center justify-center relative cursor-pointer hover:scale-103 transition-transform"
+                      onClick={() => {
+                        const stadiumKey = selectedStadium || "default";
+                        if (redeemedVouchers[stadiumKey]) {
+                          alert("ℹ️ This break voucher has already been scanned and redeemed for this stadium.");
+                          return;
+                        }
+                        setRedeemedVouchers(prev => ({ ...prev, [stadiumKey]: true }));
+                        logRoleActivity(`Scanned and redeemed stadium meal voucher at Concourse Food Court for ${details.venueName}`);
+                        alert(`✓ Meal voucher successfully scanned and redeemed for ${details.venueName}!`);
+                      }}
+                      title="Tap QR to simulate cashier scanning"
+                    >
+                      {!redeemedVouchers[selectedStadium || "default"] && (
+                        <div className="absolute inset-x-0 h-0.5 bg-emerald-500 top-1/2 -translate-y-1/2 animate-bounce pointer-events-none" />
+                      )}
+                      <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=96x96&color=000000&bgcolor=ffffff&data=${encodeURIComponent(`MEAL-VOUCHER:${selectedStadium}:${details.barcodeId}:${qrSeed}`)}`}
+                        alt="Digital Meal Voucher"
+                        className={`w-full h-full object-contain ${redeemedVouchers[selectedStadium || "default"] ? "opacity-20" : ""}`}
+                        referrerPolicy="no-referrer"
+                      />
+                      {redeemedVouchers[selectedStadium || "default"] && (
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-lg">
+                          <span className="bg-emerald-500 text-black text-[8px] font-black uppercase tracking-wider px-1 py-0.5 rounded shadow border border-black">REDEEMED</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex flex-col items-center gap-0.5 text-center">
+                      <span className="text-[9px] text-zinc-400 font-mono tracking-widest">
+                        CODE: MEAL-{selectedStadium?.toUpperCase() || "FIFA"}-4921
+                      </span>
+                      <span className="text-[8px] text-emerald-400 font-mono">
+                        REFRESHES IN: {secondsLeft}S
+                      </span>
+                    </div>
+                    <p className="text-[8px] text-zinc-500 text-center font-sans">
+                      {redeemedVouchers[selectedStadium || "default"] 
+                        ? "Voucher claimed. Enjoy your meal break!" 
+                        : "Tap QR to simulate scanner verification for 1x Free Steward Combo"}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="mt-3 p-4 bg-zinc-950 border border-zinc-900 rounded-xl flex flex-col items-center justify-center text-center gap-1.5">
+                    <Lock className="w-4 h-4 text-zinc-600" />
+                    <span className="text-[9px] text-zinc-500 font-mono uppercase tracking-widest">Voucher Locked</span>
+                    <span className="text-[8px] text-zinc-600 font-sans">Toggle break status above to generate QR Code.</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Right: Volunteer Ticker and Broadcast channel */}
+        {/* Right: Volunteer Ticker and Broadcast channel & Heatmap */}
         <div className="col-span-full lg:col-span-3 flex flex-col gap-6">
           <div className="rounded-2xl p-5 border border-[#27272a] bg-[#09090b] shadow-lg flex flex-col gap-4 h-full">
             <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
@@ -2842,22 +4188,317 @@ export default function App() {
             
             <p className="text-[9px] text-[#71717a] font-mono uppercase text-center mt-2">Volunteer Dispatch Feed Active</p>
           </div>
+
+          {/* Live Heatmap / Crowd Congestion Widget */}
+          <div className="rounded-2xl p-5 border border-[#27272a] bg-[#09090b] shadow-lg flex flex-col gap-3">
+            <div className="flex items-center justify-between border-b border-[#27272a] pb-2">
+              <h3 className="font-bold text-xs tracking-wider uppercase text-white flex items-center gap-1.5">
+                🗺️ Live Heatmap
+              </h3>
+              <span className="text-[9px] font-mono text-zinc-500 uppercase">{details.venueName.split("(")[0]}</span>
+            </div>
+
+            {/* Micro Map */}
+            <div className="relative h-44 bg-zinc-950 rounded-xl border border-zinc-900 overflow-hidden flex items-center justify-center p-4">
+              {/* Outer Stadium Track */}
+              <div className="w-36 h-28 border border-zinc-800 rounded-[50px] relative flex items-center justify-center">
+                {/* Field */}
+                <div className="w-24 h-16 bg-emerald-950/20 border border-emerald-900/40 rounded-xl flex items-center justify-center relative">
+                  <span className="text-[8px] font-mono text-emerald-800 tracking-widest font-black uppercase">FIFA Field</span>
+                </div>
+
+                {/* Gate Points */}
+                {/* Gate A */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+                  <span className="text-[8px] font-mono text-zinc-500 font-bold">Gate A</span>
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                  <span className="text-[7px] font-mono text-emerald-400 mt-0.5">32%</span>
+                </div>
+
+                {/* Gate B - Bottleneck highlighted */}
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 flex flex-col items-center">
+                  <div className={`w-2.5 h-2.5 rounded-full bg-red-500 animate-ping absolute ${details.gateName === "Gate B" ? "" : "hidden"}`} />
+                  <div className={`w-2 h-2 rounded-full ${details.gateColor} relative z-10`} />
+                  <span className="text-[8px] font-mono text-zinc-500 font-bold mt-0.5">{details.gateName}</span>
+                  <span className="text-[7px] font-mono text-red-400">{details.gatePct} {details.gateName === "Gate B" ? "(Spike)" : ""}</span>
+                </div>
+
+                {/* Gate C */}
+                <div className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 flex items-center gap-1">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
+                  <div className="flex flex-col">
+                    <span className="text-[8px] font-mono text-zinc-500 font-bold leading-none">Gate C</span>
+                    <span className="text-[7px] font-mono text-amber-400">55%</span>
+                  </div>
+                </div>
+
+                {/* Gate D */}
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 flex items-center gap-1 flex-row-reverse">
+                  <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
+                  <div className="flex flex-col items-end">
+                    <span className="text-[8px] font-mono text-zinc-500 font-bold leading-none">Gate D</span>
+                    <span className="text-[7px] font-mono text-emerald-400">28%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom HUD overlay */}
+              <div className="absolute bottom-1 left-2 right-2 flex justify-between items-center text-[8px] font-mono text-zinc-500 bg-zinc-900/50 p-1 rounded">
+                <span>CONGESTION ALERTS ACTIVE</span>
+                <span className="text-red-400 font-bold animate-pulse">{details.congestionAlert}</span>
+              </div>
+            </div>
+
+            <p className="text-[9px] text-zinc-500 font-mono leading-relaxed bg-zinc-950 p-2.5 rounded-lg border border-zinc-900">
+              ⚠️ <span className="text-white font-bold">SPATIAL FEEDBACK:</span> {details.heatmapMessage}
+            </p>
+          </div>
         </div>
+
+        {/* Full-width Match Schedule Section */}
+        <div className="col-span-full mt-6 bg-[#09090b] border border-[#27272a] rounded-2xl p-5 shadow-xl animate-fadeIn">
+          <div className="flex items-center gap-2 border-b border-[#27272a]/50 pb-3 mb-4">
+            <Calendar className="w-5 h-5 text-cyan-400" />
+            <div>
+              <h3 className="font-bold text-sm text-white">⚽ Stadium Match Schedule & Operations</h3>
+              <p className="text-xs text-zinc-500">Live match day schedule, past scores, and upcoming matches for this venue</p>
+            </div>
+          </div>
+          <MatchesSection selectedStadium={selectedStadium} stadiums={stadiums} />
+        </div>
+
+        {/* HIGH RESOLUTION SCANNABLE TUNNEL PASS MODAL */}
+        {isPassModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-md p-4 animate-fadeIn">
+            {/* Modal Body */}
+            <div className="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl relative">
+              
+              {/* Header block with glowing badge decoration */}
+              <div className="p-5 border-b border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 flex justify-between items-center">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20">
+                    <QrCode className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-white font-black text-xs uppercase tracking-widest">Digital Accreditation</h4>
+                    <p className="text-[9px] font-mono text-zinc-500">Scanner Optimized Mode</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsPassModalOpen(false)}
+                  className="w-8 h-8 rounded-full bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white flex items-center justify-center border border-zinc-700 transition-colors cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* High Contrast Physical Badge Body */}
+              <div className="p-6 flex flex-col items-center max-h-[80vh] overflow-y-auto">
+                
+                {/* Physical pass visual mock card */}
+                <div className="w-full bg-white rounded-2xl p-5 text-black shadow-xl border-4 border-emerald-500 flex flex-col items-center relative overflow-hidden">
+                  
+                  {/* Glowing Laser Scan Line Overlay */}
+                  <div className="absolute inset-x-0 h-0.5 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,1)] top-1/2 left-0 animate-bounce pointer-events-none" />
+                  
+                  {/* Badge Header */}
+                  <div className="w-full flex justify-between items-start border-b border-zinc-200 pb-3 mb-4">
+                    <div className="flex flex-col">
+                      <span className="text-xs font-black tracking-tight text-zinc-950">FIFA STEWARD ACCREDITATION</span>
+                      <span className="text-[9px] font-mono text-emerald-600 font-bold tracking-widest uppercase">LEVEL 1 • ALL ACCESS PASS</span>
+                    </div>
+                    <span className="px-1.5 py-0.5 bg-zinc-900 text-white text-[8px] font-mono font-bold rounded">2026</span>
+                  </div>
+
+                  {/* Holder Information */}
+                  <div className="w-full flex gap-3 items-center bg-zinc-50 p-2.5 rounded-lg border border-zinc-100 mb-5">
+                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center font-black text-emerald-700 text-sm uppercase">
+                      {initials}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Accredited Steward</p>
+                      <p className="text-sm font-black text-zinc-950 truncate">{registeredName}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-mono text-zinc-400 uppercase tracking-wider">Assigned Venue</p>
+                      <p className="text-xs font-bold text-zinc-900 truncate">{details.venueName.split(" (")[0]}</p>
+                    </div>
+                  </div>
+
+                  {/* Large High-Contrast Barcode */}
+                  <div className="w-full flex flex-col items-center bg-zinc-50 py-4 px-3 rounded-xl border border-zinc-200 mb-4 select-none">
+                    <span className="text-[8px] font-mono text-zinc-500 uppercase tracking-widest mb-2">Linear Tunnel Barcode</span>
+                    <div className="flex items-end gap-[3.5px] h-14 w-full justify-center">
+                      {[3, 1, 4, 1, 5, 2, 1, 4, 1, 2, 3, 1, 5, 1, 2, 4, 1, 3, 2, 1, 4, 2, 3, 1].map((w, idx) => (
+                        <div key={idx} className="bg-black h-full rounded-sm" style={{ width: `${w}px` }} />
+                      ))}
+                    </div>
+                    <span className="text-xs font-mono text-zinc-900 tracking-[0.3em] mt-2 font-bold">*{details.barcodeId}*</span>
+                  </div>
+
+                  {/* Large High-Contrast QR Code */}
+                  <div className="flex flex-col items-center bg-zinc-50 p-4 rounded-xl border border-zinc-200 w-full mb-3 select-none">
+                    <span className="text-[8px] font-mono text-zinc-500 uppercase tracking-widest mb-2">Matrix QR Access Code</span>
+                    <div className="w-36 h-36 bg-white p-2 rounded-lg border border-zinc-300 flex items-center justify-center relative shadow-sm">
+                      <img 
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=144x144&color=000000&bgcolor=ffffff&data=${encodeURIComponent(`VOLUNTEER-ACC-2026:${details.barcodeId}:STADIUM-${selectedStadium}:${qrSeed}`)}`}
+                        alt="High Contrast Tunnel Pass QR"
+                        className="w-full h-full object-contain"
+                        referrerPolicy="no-referrer"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Device Sync Status Badge */}
+                  <div className="flex flex-col items-center gap-1.5 w-full">
+                    <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold px-3 py-1.5 rounded-full border border-emerald-200">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      LIVE ACCREDITED PASS • SECURE LEVEL 1
+                    </div>
+                    <div className="flex items-center gap-1 bg-zinc-950 text-emerald-400 font-mono text-[9px] px-3 py-1 rounded-full border border-emerald-500/25 mt-1.5 font-bold tracking-wider">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                      SECURE REFRESH: {secondsLeft} SECONDS LEFT
+                    </div>
+                  </div>
+                </div>
+
+                {/* Helpful metadata tips */}
+                <div className="mt-5 w-full bg-zinc-950 p-4 rounded-2xl border border-zinc-800 space-y-2 text-left">
+                  <div className="flex items-start gap-2 text-[11px] text-zinc-400">
+                    <span className="text-amber-400 mt-0.5">💡</span>
+                    <p>
+                      <strong>Scanner Compatibility Tip:</strong> This modal has optimized white contrast for seamless scanner laser resolution.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2 text-[11px] text-zinc-400">
+                    <span className="text-cyan-400 mt-0.5">⚡</span>
+                    <p>
+                      <strong>Auto-Brightness Warning:</strong> For maximum scanning fidelity, please temporarily increase your device screen brightness to 100% while displaying this code.
+                    </p>
+                  </div>
+                  <div className="flex justify-between items-center pt-2.5 border-t border-zinc-900 mt-1.5">
+                    <span className="text-[10px] font-mono text-zinc-500">ID SECURITY CHECKSUM</span>
+                    <span className="text-[10px] font-mono text-emerald-400 font-bold">PASS-OK-2026</span>
+                  </div>
+                </div>
+
+                {/* Simulated test-beep feedback */}
+                <button 
+                  onClick={() => {
+                    try {
+                      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+                      const osc = audioCtx.createOscillator();
+                      const gain = audioCtx.createGain();
+                      osc.connect(gain);
+                      gain.connect(audioCtx.destination);
+                      osc.type = "sine";
+                      osc.frequency.setValueAtTime(1200, audioCtx.currentTime); // high pitched beep
+                      gain.gain.setValueAtTime(0.08, audioCtx.currentTime); // moderate volume
+                      osc.start();
+                      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                      osc.stop(audioCtx.currentTime + 0.15);
+                    } catch (err) {
+                      console.log("Audio feedback error:", err);
+                    }
+                    alert("🔊 [SIMULATED BEEP] Scanner registered successfully! Code matches check-in database.");
+                  }}
+                  className="mt-4 w-full bg-zinc-800 hover:bg-zinc-750 active:bg-zinc-700 text-zinc-300 hover:text-white font-mono text-[10px] font-bold py-2.5 px-4 rounded-xl transition-all border border-zinc-700/50 flex items-center justify-center gap-1.5 cursor-pointer"
+                  title="Simulate scanning beep"
+                >
+                  🔊 Simulate Scanner Validation Beep
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )}
       </div>
     );
   };
 
   const renderAdminDashboard = () => {
-    return <AdminDashboard locale={locale} />;
+    return (
+      <div className="flex flex-col gap-6 w-full animate-fadeIn">
+        <AdminDashboard 
+          locale={locale} 
+          selectedStadium={selectedStadium} 
+          setSelectedStadium={setSelectedStadium} 
+          stadiums={stadiums} 
+        />
+      </div>
+    );
   };
 
   const renderOrganizerDashboard = () => {
+    const getCityNameForStadium = (stadiumId: string) => {
+      switch (stadiumId) {
+        case "st_sofi": return "Los Angeles";
+        case "st_metlife": return "New Jersey";
+        case "st_mercedes": 
+        case "st_mbs": return "Atlanta";
+        case "st_azteca": return "Mexico City";
+        case "st_bcplace": return "Vancouver";
+        default: return "";
+      }
+    };
+    const city = getCityNameForStadium(selectedStadium);
+    const filteredMasterMatches = masterMatches.filter(m => m.venue.includes(city));
+
+    const getOrganizerMetrics = (stadiumId: string) => {
+      const map: Record<string, { revenue: string; pct: string; spending: string; target: string; attendance: string }> = {
+        st_sofi: { revenue: "$4.28M", pct: "+12.4%", spending: "$62.40", target: "$58.00", attendance: "68,400 / 70,000" },
+        st_metlife: { revenue: "$5.62M", pct: "+14.1%", spending: "$68.50", target: "$65.00", attendance: "78,200 / 82,500" },
+        st_mercedes: { revenue: "$3.81M", pct: "+9.5%", spending: "$59.20", target: "$55.00", attendance: "67,100 / 71,000" },
+        st_mbs: { revenue: "$3.81M", pct: "+9.5%", spending: "$59.20", target: "$55.00", attendance: "67,100 / 71,000" },
+        st_azteca: { revenue: "$2.45M", pct: "+5.2%", spending: "$38.40", target: "$35.00", attendance: "84,500 / 87,500" },
+        st_bcplace: { revenue: "$2.98M", pct: "+8.1%", spending: "$48.90", target: "$45.00", attendance: "52,100 / 54,500" }
+      };
+      return map[stadiumId] || map["st_sofi"];
+    };
+    const orgMetrics = getOrganizerMetrics(selectedStadium);
+
     return (
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch w-full animate-fadeIn">
-        {/* Top Metric Strip */}
+        {/* Commercial & Revenue Analytics (Top KPI Row) */}
+        <div className="col-span-full grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="rounded-2xl p-5 border border-emerald-500/20 bg-emerald-950/10 shadow-lg flex flex-col justify-between relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-transparent pointer-events-none" />
+            <span className="text-[10px] font-mono font-bold uppercase text-emerald-500 mb-2 block tracking-widest">Live Gross Revenue Ticker</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-black text-white">{orgMetrics.revenue}</span>
+              <span className="text-xs font-mono text-emerald-400">{orgMetrics.pct} vs projection</span>
+            </div>
+          </div>
+          <div className="rounded-2xl p-5 border border-[#27272a] bg-[#09090b] shadow-lg flex flex-col justify-between">
+            <span className="text-[10px] font-mono font-bold uppercase text-zinc-500 mb-2 block tracking-widest">Per-Capita Spending Index</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-black text-white">{orgMetrics.spending}</span>
+              <span className="text-xs font-mono text-emerald-400">Target: {orgMetrics.target}</span>
+            </div>
+          </div>
+          <div className="rounded-2xl p-5 border border-[#27272a] bg-[#09090b] shadow-lg flex flex-col justify-between">
+            <span className="text-[10px] font-mono font-bold uppercase text-zinc-500 mb-2 block tracking-widest">Revenue Stream Breakdown</span>
+            <div className="flex justify-between items-end mt-2">
+              <div className="flex flex-col items-center gap-1 w-full relative">
+                <div className="w-full flex h-4 bg-zinc-800 rounded overflow-hidden">
+                   <div className="h-full bg-emerald-500" style={{ width: '65%' }} title="Ticketing 65%" />
+                   <div className="h-full bg-blue-500" style={{ width: '25%' }} title="F&B 25%" />
+                   <div className="h-full bg-purple-500" style={{ width: '10%' }} title="Merch 10%" />
+                </div>
+                <div className="flex justify-between w-full text-[9px] uppercase text-zinc-400 mt-1 font-mono">
+                  <span>Ticketing</span>
+                  <span>F&B</span>
+                  <span>Merch</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Original Top Metric Strip */}
         <div className="col-span-full grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
-            { label: "Overall Attendance", value: "82,400 / 85,000", color: "text-white" },
+            { label: "Overall Attendance", value: orgMetrics.attendance, color: "text-white" },
             { label: "Staff Active", value: `${Object.values(staffFleet).reduce((a: any, b: any) => Number(a) + Number(b), 0)} Deployed`, color: "text-purple-400" },
             { label: "Active Incidents", value: `${incidents.filter(i => i.status !== "resolved").length} Alert Logs`, color: "text-red-500" },
             { label: "Emergency Overrides", value: globalEmergencyOverride ? "1 ACTIVE" : "0 ACTIVE", color: globalEmergencyOverride ? "text-red-500 animate-pulse" : "text-zinc-500" }
@@ -2881,7 +4522,12 @@ export default function App() {
             </div>
 
             <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
-              {masterMatches.map((match) => (
+              {filteredMasterMatches.length === 0 && (
+                <div className="p-4 text-center text-zinc-500 font-mono text-xs uppercase border border-dashed border-zinc-800 rounded-lg">
+                  No Core Matches scheduled for this venue.
+                </div>
+              )}
+              {filteredMasterMatches.map((match) => (
                 <div key={match.id} className="p-3 bg-zinc-950 border border-zinc-900 rounded-lg flex items-center justify-between gap-4 text-xs font-mono">
                   <div className="space-y-1">
                     <div className="flex items-center gap-1.5">
@@ -2899,11 +4545,12 @@ export default function App() {
 
                   <div className="flex flex-col items-end gap-1.5">
                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                      match.status === "In-Progress" ? "bg-[#22c55e]/15 text-[#22c55e] animate-pulse" : "bg-zinc-800 text-zinc-400"
+                      match.status === "In-Progress" ? "bg-[#22c55e]/15 text-[#22c55e] animate-pulse" : 
+                      match.status === "Delayed" ? "bg-amber-500/15 text-amber-500 animate-pulse" : "bg-zinc-800 text-zinc-400"
                     }`}>
                       {match.status}
                     </span>
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-wrap justify-end">
                       <button 
                         onClick={() => {
                           setMasterMatches(prev => prev.map(m => m.id === match.id ? { ...m, status: "In-Progress", density: "Extreme", staffing: "Surge Deployed" } : m));
@@ -2915,20 +4562,39 @@ export default function App() {
                       </button>
                       <button 
                         onClick={() => {
+                          setMasterMatches(prev => prev.map(m => m.id === match.id ? { ...m, status: "Delayed" } : m));
+                          logRoleActivity(`Organizer DELAYED match "${match.match}"`);
+                        }}
+                        className="px-1.5 py-0.5 rounded bg-amber-950 hover:bg-amber-900 border border-amber-900/50 text-[8px] font-bold uppercase text-amber-400"
+                      >
+                        Delay
+                      </button>
+                      <button 
+                        onClick={() => {
                           setMasterMatches(prev => prev.map(m => m.id === match.id ? { ...m, status: "Complete", density: "Empty", staffing: "Stand-down" } : m));
-                          logRoleActivity(`Organizer marked match "${match.match}" as Complete (Stand-down)`);
+                          logRoleActivity(`Organizer closed match "${match.match}"`);
                         }}
                         className="px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-[8px] font-bold uppercase text-zinc-300"
                       >
                         End
                       </button>
+                      {match.status === "Complete" && (
+                         <button 
+                          onClick={() => {
+                            logRoleActivity(`Organizer exported Official Match Report for "${match.match}"`);
+                          }}
+                          className="px-1.5 py-0.5 rounded bg-blue-900/50 hover:bg-blue-800 border border-blue-800/50 text-[8px] font-bold uppercase text-blue-300 w-full mt-1"
+                        >
+                          Export Report
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           </div>
-
+          
           {/* Predictive AI Insights */}
           <div className="rounded-2xl p-5 border border-[#27272a] bg-[#09090b] shadow-lg flex flex-col gap-4">
             <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
@@ -2942,7 +4608,7 @@ export default function App() {
               <div className="p-3 rounded bg-zinc-950 border border-zinc-900 space-y-1.5">
                 <p className="text-purple-400 font-extrabold text-[10px] uppercase">🚨 ARRIVAL PEAK CRITICAL WARNING</p>
                 <p className="text-white text-[11px] leading-relaxed">
-                  Predictive analytics forecast Gate A queues will spike up to an **18-minute wait time** between 17:35 and 18:10.
+                  Predictive analytics forecast Gate A queues will spike up to an 18-minute wait time between 17:35 and 18:10.
                 </p>
                 <span className="text-[9px] text-zinc-500 block">Suggested action: Re-route southern loop shuttles to East Gate C plaza.</span>
               </div>
@@ -2950,10 +4616,69 @@ export default function App() {
               <div className="p-3 rounded bg-zinc-950 border border-zinc-900 space-y-1.5">
                 <p className="text-[#22c55e] font-extrabold text-[10px] uppercase">🚍 SHUTTLE TRANSIT DECONGESTION SUCCESS</p>
                 <p className="text-white text-[11px] leading-relaxed">
-                  Real-time GPS bus flow tracking suggests the East Gate shuttle line is operating at **96% efficiency** with a average wait time under **3 minutes**.
+                  Real-time GPS bus flow tracking suggests the East Gate shuttle line is operating at 96% efficiency with a average wait time under 3 minutes.
                 </p>
                 <span className="text-[9px] text-zinc-500 block">System status: Normal route optimization active.</span>
               </div>
+            </div>
+          </div>
+
+          {/* Vendor, Merchandise, & Concession Hub */}
+          <div className="rounded-2xl p-5 border border-[#27272a] bg-[#09090b] shadow-lg flex flex-col gap-4">
+            <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
+              <h3 className="font-bold text-xs tracking-wider uppercase text-white flex items-center gap-1.5">
+                🍔 Vendor & Concession Hub
+              </h3>
+              <span className="text-[10px] font-mono text-zinc-500 uppercase">Live Partners</span>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-3 bg-zinc-950 border border-red-900/40 rounded-xl relative overflow-hidden">
+                <div className="absolute top-0 right-0 p-2"><AlertTriangle className="w-3 h-3 text-red-500 animate-pulse" /></div>
+                <h4 className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest mb-2">Concessions Bottleneck</h4>
+                <p className="text-[11px] text-white">East Concourse F&B - 14 min wait time.</p>
+                <button className="mt-2 text-[9px] font-bold text-red-400 uppercase underline">Deploy Extra Registers</button>
+              </div>
+              <div className="p-3 bg-zinc-950 border border-amber-900/40 rounded-xl">
+                <h4 className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest mb-2">Inventory Depletion</h4>
+                <p className="text-[11px] text-white">USA Official Jersey (L) dropping below 15%.</p>
+                <button className="mt-2 text-[9px] font-bold text-amber-400 uppercase underline">Ping Warehouse Supply</button>
+              </div>
+              <div className="p-3 bg-zinc-950 border border-emerald-900/40 rounded-xl">
+                <h4 className="text-[10px] font-mono text-zinc-400 uppercase tracking-widest mb-2">Sponsor Activations</h4>
+                <p className="text-[11px] text-white">Coca-Cola Halftime Push: 42,100 Impressions</p>
+                <div className="w-full bg-zinc-900 h-1 mt-2 rounded-full"><div className="bg-emerald-500 h-full w-[85%]" /></div>
+              </div>
+            </div>
+          </div>
+
+          {/* Fan Engagement & Marketing Controls */}
+          <div className="rounded-2xl p-5 border border-[#27272a] bg-[#09090b] shadow-lg flex flex-col gap-4">
+            <div className="flex items-center justify-between border-b border-[#27272a] pb-3">
+              <h3 className="font-bold text-xs tracking-wider uppercase text-white flex items-center gap-1.5">
+                📢 Fan Engagement & Marketing
+              </h3>
+              <div className="flex items-center gap-2">
+                 <span className="text-[10px] font-mono text-zinc-500 uppercase">Sentiment Score</span>
+                 <span className="text-[11px] font-black text-emerald-400">92/100</span>
+              </div>
+            </div>
+            
+            <div className="flex items-end gap-3">
+              <div className="flex-1 space-y-1.5">
+                <label className="text-[10px] font-mono text-zinc-500 uppercase">Targeted Push Notification Broadcaster</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g., '15% off drinks at Sector 114 for the next 20 minutes!'"
+                  className="w-full bg-zinc-950 text-white border border-zinc-800 p-2.5 rounded-lg text-xs font-mono focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+              <button 
+                onClick={() => { logRoleActivity("Organizer broadcasted targeted fan engagement notification"); }}
+                className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs uppercase tracking-widest transition-all"
+              >
+                Send
+              </button>
             </div>
           </div>
         </div>
@@ -3086,8 +4811,11 @@ export default function App() {
       wsConnected={wsConnected}
       handleLogout={handleLogout}
       currentUser={user}
+      onUpdateProfile={(updatedUser) => {
+        setUser(updatedUser);
+      }}
     >
-      {persona !== "fan" && !isRoleVerified ? (
+      {persona !== "fan" && false ? (
         <div className="w-full flex-1 flex flex-col items-center justify-center p-8 bg-[#09090b]/50 border border-red-500/20 rounded-2xl min-h-[400px] text-center space-y-4 animate-fadeIn">
           <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-full text-red-500 animate-pulse">
             <Lock className="w-10 h-10" />
@@ -3104,7 +4832,38 @@ export default function App() {
           </p>
         </div>
       ) : (
-        <AnimatePresence mode="wait">
+        <>
+          {/* Global Live Match Banner */}
+          {liveMatchData.status === "Live" && (
+            <div className="mb-6 w-full rounded-2xl border border-[#27272a] bg-[#09090b]/80 backdrop-blur-md shadow-xl flex items-center justify-between p-4 overflow-hidden relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-transparent pointer-events-none" />
+              <div className="flex items-center gap-4 z-10">
+                <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shadow-inner">
+                  <Activity className="w-6 h-6 animate-pulse" />
+                </div>
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-rose-500/10 text-rose-400 text-[10px] font-bold rounded border border-rose-500/20 uppercase tracking-widest">{liveMatchData.status}</span>
+                    <span className="text-sm font-black text-white uppercase tracking-wider">{liveMatchData.home} vs {liveMatchData.away}</span>
+                  </div>
+                  <div className="flex items-center gap-3 mt-1 text-[10px] font-mono text-zinc-400">
+                    <span className="text-emerald-400 font-bold tracking-wider">Score: {liveMatchData.score} • {liveMatchData.minute}'</span>
+                    <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                    <span>
+                       {selectedStadium === "st_sofi" ? "Los Angeles (SoFi)" : selectedStadium === "st_metlife" ? "New Jersey (MetLife)" : selectedStadium === "st_mercedes" ? "Atlanta (MBS)" : selectedStadium === "st_azteca" ? "Mexico City (Azteca)" : "Vancouver (BC Place)"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              {persona === "organizer" && (
+                 <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest text-right z-10 hidden md:block">
+                    <span className="block text-white font-bold text-lg mb-0.5">{staffRoster.length * 1542}</span>
+                    Live Fans in Stadium
+                 </div>
+              )}
+            </div>
+          )}
+          <AnimatePresence mode="wait">
           {persona === "fan" && (
             <motion.div
               key="fan-dashboard"
@@ -3166,21 +4925,271 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
+        </>
       )}
 
       <AnimatePresence mode="wait">
         {showChat && (
-          <ChatInterface role={persona} onClose={() => setShowChat(false)} />
+          <ChatInterface role={persona} onClose={() => setShowChat(false)} staffMember={chattingWithStaff} />
         )}
       </AnimatePresence>
 
-      {persona !== "fan" && persona !== "admin" && (
+      {!showChat && persona !== "fan" && persona !== "admin" && (
         <button
-          onClick={() => setShowChat(!showChat)}
+          onClick={() => {
+            setChattingWithStaff(null);
+            setShowChat(true);
+          }}
           className="fixed bottom-24 right-6 z-50 p-4 bg-emerald-600 text-white rounded-full shadow-lg hover:bg-emerald-700 transition"
         >
           <MessageSquare className="w-6 h-6"/>
         </button>
+      )}
+
+      {expandedImage && (
+        <div 
+          className="fixed inset-0 z-[10000] flex flex-col items-center justify-center p-4 bg-black/90 backdrop-blur-md cursor-zoom-out"
+          onClick={() => setExpandedImage(null)}
+          role="dialog"
+          aria-modal="true"
+        >
+          {/* Top right floating close button */}
+          <button 
+            onClick={() => setExpandedImage(null)}
+            className="absolute top-4 right-4 p-2.5 rounded-full bg-zinc-900/80 border border-zinc-800 text-zinc-400 hover:text-white transition cursor-pointer z-10 hover:scale-105 active:scale-95"
+            title="Close Zoom"
+          >
+            <X className="w-5 h-5" />
+          </button>
+
+          <div className="relative max-w-4xl max-h-[85vh] overflow-hidden rounded-2xl border border-zinc-800/60 bg-zinc-950/20 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <img 
+              src={typeof expandedImage === "string" ? expandedImage : expandedImage.url} 
+              className="w-full h-auto max-h-[80vh] object-contain block mx-auto rounded-xl hover:scale-102 transition-transform duration-300" 
+              alt="Expanded Evidence" 
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.src = "https://images.unsplash.com/photo-1511578314322-379afb476865?w=1200&q=80";
+              }}
+            />
+          </div>
+        </div>
+      )}
+
+      {showLogIncidentModal && (
+        <div 
+          className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-md bg-[#09090b] border border-zinc-800 rounded-2xl shadow-2xl p-6 text-white font-sans relative overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-red-500/20 via-red-500 to-red-500/20"></div>
+            
+            <div className="flex items-center justify-between pb-4 border-b border-zinc-900 mb-5">
+              <h3 className="font-black text-xs font-mono uppercase tracking-widest text-red-500 flex items-center gap-2">
+                <ShieldAlert className="w-4 h-4 text-red-500" /> Log Operational Incident
+              </h3>
+              <button 
+                onClick={() => setShowLogIncidentModal(false)}
+                className="text-zinc-500 hover:text-white text-xs uppercase font-black"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[9px] font-mono uppercase tracking-widest text-zinc-500 mb-1.5">Location / Zone</label>
+                <input 
+                  type="text"
+                  placeholder="e.g. Section 112, Row 4"
+                  value={newIncidentLoc}
+                  onChange={(e) => setNewIncidentLoc(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 p-2.5 rounded-xl text-xs placeholder-zinc-700 text-white focus:outline-none focus:border-red-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[9px] font-mono uppercase tracking-widest text-zinc-500 mb-1.5">Category</label>
+                  <select
+                    value={newIncidentCat}
+                    onChange={(e) => setNewIncidentCat(e.target.value as any)}
+                    className="w-full bg-zinc-950 border border-zinc-800 p-2.5 rounded-xl text-xs text-white focus:outline-none focus:border-red-500"
+                  >
+                    <option value="seat">Broken Seat</option>
+                    <option value="gate">Gate Checkpoint</option>
+                    <option value="spill">Liquid Spill</option>
+                    <option value="other">Other Issue</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[9px] font-mono uppercase tracking-widest text-zinc-500 mb-1.5">Severity</label>
+                  <select
+                    value={newIncidentSeverity}
+                    onChange={(e) => setNewIncidentSeverity(e.target.value as any)}
+                    className="w-full bg-zinc-950 border border-zinc-800 p-2.5 rounded-xl text-xs text-white focus:outline-none focus:border-red-500"
+                  >
+                    <option value="low">Low Priority</option>
+                    <option value="medium">Medium Priority</option>
+                    <option value="high">High Priority</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-mono uppercase tracking-widest text-zinc-500 mb-1.5">Incident Description</label>
+                <textarea 
+                  rows={3}
+                  placeholder="Describe the physical state, safety impact, or operational issue..."
+                  value={newIncidentDesc}
+                  onChange={(e) => setNewIncidentDesc(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 p-2.5 rounded-xl text-xs placeholder-zinc-700 text-white focus:outline-none focus:border-red-500"
+                />
+              </div>
+
+              <div className="pt-2">
+                <button
+                  onClick={() => {
+                    if (!newIncidentLoc.trim() || !newIncidentDesc.trim()) {
+                      alert("Please specify location and provide description.");
+                      return;
+                    }
+                    const newId = `inc-${Date.now().toString().slice(-4)}`;
+                    const newInc = {
+                      id: newId,
+                      location: newIncidentLoc,
+                      category: newIncidentCat,
+                      desc: newIncidentDesc,
+                      status: "pending" as const,
+                      severity: newIncidentSeverity,
+                      time: "Just now",
+                      image: getIncidentImage(newIncidentCat)
+                    };
+                    setIncidents(prev => [newInc, ...prev]);
+                    logRoleActivity(`New ${newIncidentSeverity.toUpperCase()} priority incident (${newIncidentCat.toUpperCase()}) logged at ${newIncidentLoc}`);
+                    
+                    setNewIncidentLoc("");
+                    setNewIncidentCat("seat");
+                    setNewIncidentDesc("");
+                    setNewIncidentSeverity("low");
+                    setShowLogIncidentModal(false);
+                  }}
+                  className="w-full py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-[11px] font-black uppercase tracking-widest transition-all"
+                >
+                  Submit Incident Report
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddStaffModal && (
+        <div 
+          className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fadeIn"
+          role="dialog"
+          aria-modal="true"
+        >
+          <div className="w-full max-w-md bg-[#09090b] border border-zinc-800 rounded-2xl shadow-2xl p-6 text-white font-sans relative overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-cyan-500/20 via-cyan-500 to-cyan-500/20"></div>
+            
+            <div className="flex items-center justify-between pb-4 border-b border-zinc-900 mb-5">
+              <h3 className="font-black text-xs font-mono uppercase tracking-widest text-cyan-500 flex items-center gap-2">
+                <Users className="w-4 h-4 text-cyan-500" /> Dispatch New Personnel
+              </h3>
+              <button 
+                onClick={() => {
+                  setShowAddStaffModal(false);
+                  setNewStaffName("");
+                }}
+                className="text-zinc-500 hover:text-white text-xs uppercase font-black cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[9px] font-mono uppercase tracking-widest text-zinc-500 mb-1.5">Personnel Name</label>
+                <input 
+                  type="text"
+                  placeholder="e.g. David K."
+                  value={newStaffName}
+                  onChange={(e) => setNewStaffName(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 p-2.5 rounded-xl text-xs placeholder-zinc-700 text-white focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[9px] font-mono uppercase tracking-widest text-zinc-500 mb-1.5">Assigned Role</label>
+                  <select
+                    value={newStaffRole}
+                    onChange={(e) => setNewStaffRole(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 p-2.5 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
+                  >
+                    <option value="Security">Security</option>
+                    <option value="Steward">Steward</option>
+                    <option value="Medical">Medical</option>
+                    <option value="Hospitality">Hospitality</option>
+                    <option value="General">General</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[9px] font-mono uppercase tracking-widest text-zinc-500 mb-1.5">Duty Zone</label>
+                  <input 
+                    type="text"
+                    placeholder="e.g. Sector 112"
+                    value={newStaffZone}
+                    onChange={(e) => setNewStaffZone(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-800 p-2.5 rounded-xl text-xs placeholder-zinc-700 text-white focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[9px] font-mono uppercase tracking-widest text-zinc-500 mb-1.5">Initial Status</label>
+                <select
+                  value={newStaffStatus}
+                  onChange={(e) => setNewStaffStatus(e.target.value as any)}
+                  className="w-full bg-zinc-950 border border-zinc-800 p-2.5 rounded-xl text-xs text-white focus:outline-none focus:border-cyan-500"
+                >
+                  <option value="active">Active Duty</option>
+                  <option value="on-break">On Break</option>
+                </select>
+              </div>
+
+              <div className="pt-4">
+                <button
+                  onClick={() => {
+                    if (!newStaffName.trim()) {
+                      alert("Please specify a personnel name.");
+                      return;
+                    }
+                    setStaffRoster(prev => [
+                      ...prev, 
+                      { 
+                        name: newStaffName.trim(), 
+                        role: newStaffRole, 
+                        zone: newStaffZone || "Unassigned", 
+                        status: newStaffStatus 
+                      }
+                    ]);
+                    logRoleActivity(`Added new staff member: ${newStaffName.trim()} (${newStaffRole})`);
+                    setNewStaffName("");
+                    setShowAddStaffModal(false);
+                  }}
+                  className="w-full py-3 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-[11px] font-black uppercase tracking-widest transition-all cursor-pointer"
+                >
+                  Confirm Dispatch
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {showRoleAuthModal && (

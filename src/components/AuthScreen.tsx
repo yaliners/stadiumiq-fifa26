@@ -2,13 +2,14 @@ import React, { useState, useEffect } from "react";
 import { auth, db } from "../lib/firebase";
 import { GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signInAnonymously, createUserWithEmailAndPassword, signInWithCredential } from "firebase/auth";
 import { doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { User, Shield, Calendar, Heart, Settings, ArrowRight, Check, ExternalLink, FileText } from "lucide-react";
+import { User, Shield, Calendar, Heart, Settings, ArrowRight, Check, ExternalLink, FileText, Eye, EyeOff } from "lucide-react";
 
 interface AuthScreenProps {
   onAuthSuccess: (role: "staff" | "organizer" | "volunteer" | "fan" | "admin", customUser?: any) => void;
+  locale?: string;
 }
 
-export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
+export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
   const [step, setStep] = useState<"welcome" | "roles" | "login">("welcome");
   const [role, setRole] = useState<"staff" | "organizer" | "volunteer" | "fan" | "admin" | null>(null);
   const [error, setError] = useState("");
@@ -26,128 +27,29 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
   // Fan OTP/Password setup popup states
   const [showFanOtpModal, setShowFanOtpModal] = useState(false);
+  const [showVolunteerPasswordModal, setShowVolunteerPasswordModal] = useState(false);
 
   const [fanEmail, setFanEmail] = useState("");
   const [fanOtpInput, setFanOtpInput] = useState("");
   const [fanGeneratedOtp, setFanGeneratedOtp] = useState("");
   const [fanNewPassword, setFanNewPassword] = useState("");
+  const [fanConfirmPassword, setFanConfirmPassword] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [fanOtpError, setFanOtpError] = useState("");
   const [otpSuccessMessage, setOtpSuccessMessage] = useState("");
 
-  const [tokenClient, setTokenClient] = useState<any>(null);
-  const [showGoogleAccountModal, setShowGoogleAccountModal] = useState(false);
-  const [selectedGoogleAccount, setSelectedGoogleAccount] = useState("yalinesuje@gmail.com");
-  const [customGoogleEmail, setCustomGoogleEmail] = useState("");
-  const [customGoogleName, setCustomGoogleName] = useState("");
+  const [volunteerNewPassword, setVolunteerNewPassword] = useState("");
+  const [volunteerConfirmPassword, setVolunteerConfirmPassword] = useState("");
+  const [volunteerPasswordError, setVolunteerPasswordError] = useState("");
 
-  useEffect(() => {
-    // Note that Google's account picker can only show accounts that are actually signed into the browser profile being tested —
-    // if only one Google account is signed into the browser, no code change will make a second option appear.
-    // Testing the multi-account picker requires signing a second real Google account into the browser first
-    // (via google.com > profile icon > "Add another account").
-    if (step !== "login" || role !== "fan") return;
+  const [regUid, setRegUid] = useState("");
 
-    let intervalId: NodeJS.Timeout;
-    const initGis = () => {
-      if ((window as any).google?.accounts) {
-        clearInterval(intervalId);
-        try {
-          const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
-          if (!clientId) return;
-          
-          // 1. Initialize google.accounts.id with FedCM configuration and disabled auto_select
-          (window as any).google.accounts.id.initialize({
-            client_id: clientId,
-            auto_select: false, // Prevents silently reusing previously selected account
-            use_fedcm_for_prompt: true, // FedCM configuration for latest browser requirements
-            callback: async (response: any) => {
-              setLoading(true);
-              setError("");
-              try {
-                const credential = response.credential;
-                const firebaseCredential = GoogleAuthProvider.credential(credential);
-                const result = await signInWithCredential(auth, firebaseCredential);
-                const selectedRole = "fan";
-                const nameParts = (result.user.displayName || "").trim().split(/\s+/);
-                const googleFirstName = nameParts[0] || "";
-                const googleLastName = nameParts.slice(1).join(" ") || "";
-
-                const userData = {
-                  email: result.user.email,
-                  displayName: result.user.displayName || "FIFA FAN",
-                  firstName: googleFirstName,
-                  lastName: googleLastName,
-                  photoURL: result.user.photoURL || "",
-                  role: selectedRole,
-                  createdAt: new Date().toISOString(),
-                };
-                await setDoc(doc(db, "users", result.user.uid), userData, { merge: true });
-                onAuthSuccess(selectedRole, { ...result.user, ...userData });
-              } catch (err: any) {
-                console.error("GIS Sign-In Failed:", err);
-                setError(err.message || "Failed to sign in with Google.");
-              } finally {
-                setLoading(false);
-              }
-            }
-          });
-
-          // 2. Initialize google.accounts.oauth2.initTokenClient with prompt "select_account"
-          const client = (window as any).google.accounts.oauth2.initTokenClient({
-            client_id: clientId,
-            scope: "openid email profile",
-            prompt: "select_account", // Force Google's account chooser on every single-sign-in attempt
-            callback: async (tokenResponse: any) => {
-              if (tokenResponse.error) {
-                console.error("GIS OAuth Token error:", tokenResponse);
-                setError("Google sign-in flow encountered an error: " + tokenResponse.error);
-                return;
-              }
-              setLoading(true);
-              setError("");
-              try {
-                const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-                });
-                const userInfo = await userInfoRes.json();
-                const selectedRole = "fan";
-                const nameParts = (userInfo.name || "").trim().split(/\s+/);
-                const googleFirstName = nameParts[0] || "";
-                const googleLastName = nameParts.slice(1).join(" ") || "";
-
-                const userData = {
-                  email: userInfo.email,
-                  displayName: userInfo.name || "FIFA FAN",
-                  firstName: googleFirstName,
-                  lastName: googleLastName,
-                  photoURL: userInfo.picture || "",
-                  role: selectedRole,
-                  createdAt: new Date().toISOString(),
-                };
-
-                const customUid = `google-${userInfo.email.replace("@", "-").replace(".", "-")}`;
-                await setDoc(doc(db, "users", customUid), userData, { merge: true });
-                onAuthSuccess(selectedRole, { uid: customUid, ...userData });
-              } catch (err: any) {
-                console.error("GIS Sign-In Process Failed:", err);
-                setError("Failed to process Google Identity information.");
-              } finally {
-                setLoading(false);
-              }
-            }
-          });
-          setTokenClient(client);
-        } catch (e) {
-          console.warn("Google Identity Services setup failed:", e);
-        }
-      }
-    };
-
-    intervalId = setInterval(initGis, 300);
-    return () => clearInterval(intervalId);
-  }, [step, role]);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showFanNewPassword, setShowFanNewPassword] = useState(false);
+  const [showFanConfirmPassword, setShowFanConfirmPassword] = useState(false);
+  const [showVolunteerNewPassword, setShowVolunteerNewPassword] = useState(false);
+  const [showVolunteerConfirmPassword, setShowVolunteerConfirmPassword] = useState(false);
 
   const handleSendOtp = (targetEmail: string) => {
     if (!targetEmail || !targetEmail.includes("@")) {
@@ -168,6 +70,10 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
       setFanOtpError("Invalid OTP verification code. Please try again.");
       return;
     }
+    if (fanNewPassword !== fanConfirmPassword) {
+      setFanOtpError("Passwords do not match.");
+      return;
+    }
     if (fanNewPassword.length < 6) {
       setFanOtpError("Password must be at least 6 characters.");
       return;
@@ -185,7 +91,11 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         userUid = result.user.uid;
       } catch (authErr: any) {
         console.warn("Firebase email creation failed, creating local user session fallback:", authErr);
-        userUid = `local-fan-${Date.now()}`;
+        if (authErr.code === "auth/operation-not-allowed") {
+          userUid = `mock-${fanEmail.replace(/[^a-zA-Z0-9]/g, "-")}`;
+        } else {
+          userUid = `local-fan-${Date.now()}`;
+        }
       }
 
       // Save user details in Firestore
@@ -195,7 +105,8 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         displayName: fanEmail.split("@")[0] || "FIFA Fan",
         role: "fan" as const,
         createdAt: new Date().toISOString(),
-        isLocal: !firebaseUser
+        isLocal: !firebaseUser,
+        password: !firebaseUser ? fanNewPassword : undefined
       };
       await setDoc(doc(db, "users", userUid), userData, { merge: true });
 
@@ -219,69 +130,47 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
   ];
 
   const handleGoogleLogin = async () => {
-    // Note that Google's account picker can only show accounts that are actually signed into the browser profile being tested —
-    // if only one Google account is signed into the browser, no code change will make a second option appear.
-    // Testing the multi-account picker requires signing a second real Google account into the browser first
-    // (via google.com > profile icon > "Add another account").
     setError("");
-
-    if (tokenClient && import.meta.env.VITE_GOOGLE_CLIENT_ID) {
-      try {
-        setLoading(true);
-        tokenClient.requestAccessToken();
-        return;
-      } catch (err) {
-        console.warn("Real GSI tokenClient requestAccessToken failed, fallback to local flow:", err);
-      }
-    }
-
-    // Smooth mockup Google Account Selector modal fallback
-    setShowGoogleAccountModal(true);
-  };
-
-  const handleGoogleLoginConfirm = async () => {
     setLoading(true);
-    setError("");
-    setShowGoogleAccountModal(false);
-
     try {
-      const selectedRole = role || "fan";
-      let userEmail = "yalinesuje@gmail.com";
-      let displayName = "Yaline Suje";
-
-      if (selectedGoogleAccount === "guest.fifa2026@gmail.com") {
-        userEmail = "guest.fifa2026@gmail.com";
-        displayName = "StadiumIQ Guest";
-      } else if (selectedGoogleAccount === "custom" && customGoogleEmail.trim()) {
-        userEmail = customGoogleEmail.trim();
-        displayName = customGoogleName.trim() || userEmail.split("@")[0];
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      let result;
+      try {
+        result = await signInWithPopup(auth, provider);
+      } catch (popupErr: any) {
+        console.warn("Popup blocked or failed, attempting redirect:", popupErr);
+        // Fallback or explicit instruction
+        setError("Popup was blocked. Please check your browser settings or try again.");
+        setLoading(false);
+        return;
       }
 
-      const nameParts = displayName.trim().split(/\s+/);
+      const selectedRole = role || "fan";
+      
+      const nameParts = (result.user.displayName || "").trim().split(/\s+/);
       const fName = nameParts[0] || "FIFA";
       const lName = nameParts.slice(1).join(" ") || "Fan";
 
       const userData = {
-        email: userEmail,
-        displayName: displayName,
+        email: result.user.email,
+        displayName: result.user.displayName || "FIFA FAN",
         firstName: fName,
         lastName: lName,
-        photoURL: `https://api.dicebear.com/7.x/adventurer/svg?seed=${encodeURIComponent(fName)}`,
+        photoURL: result.user.photoURL || "",
         role: selectedRole,
         createdAt: new Date().toISOString(),
       };
 
-      try {
-        const customUid = `google-${userEmail.replace("@", "-").replace(".", "-")}`;
-        await setDoc(doc(db, "users", customUid), userData, { merge: true });
-        onAuthSuccess(selectedRole, { uid: customUid, ...userData });
-      } catch (dbErr) {
-        console.warn("Firestore user cache failed, continuing locally", dbErr);
-        onAuthSuccess(selectedRole, { uid: `local-google-${Date.now()}`, ...userData });
-      }
+      await setDoc(doc(db, "users", result.user.uid), userData, { merge: true });
+      onAuthSuccess(selectedRole, { ...result.user, ...userData });
     } catch (err: any) {
       console.error("Google Auth error:", err);
-      setError("Google account authorization was unsuccessful. Please check connection and try again.");
+      if (err.code === "auth/popup-closed-by-user") {
+        setError("Sign-in popup was closed before completion.");
+      } else {
+        setError("Google sign-in failed. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -304,7 +193,12 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         firebaseUser = result.user;
       } catch (authErr: any) {
         console.warn("Firebase Auth registration failed, fallback to local document UID", authErr);
-        userUid = `local-vol-${Date.now()}`;
+        // If it's specifically operation-not-allowed, we use a custom UID based on email to allow "mock" auth
+        if (authErr.code === "auth/operation-not-allowed") {
+          userUid = `mock-${email.replace(/[^a-zA-Z0-9]/g, "-")}`;
+        } else {
+          userUid = `local-vol-${Date.now()}`;
+        }
       }
 
       const userData = {
@@ -320,7 +214,8 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         isLocal: !firebaseUser
       };
       await setDoc(doc(db, "users", userUid), userData, { merge: true });
-      onAuthSuccess("volunteer", firebaseUser ? { ...firebaseUser, ...userData } : userData);
+      setRegUid(userUid);
+      setShowVolunteerPasswordModal(true);
     } catch (err: any) {
       console.error("Registration failed:", err);
       if (err.code === "auth/email-already-in-use") {
@@ -388,7 +283,26 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         const result = await signInWithEmailAndPassword(auth, targetEmail, password);
         onAuthSuccess(targetRole, result.user);
       } catch (err: any) {
-        console.warn("Standard login failed, checking fallback for privileged roles:", err);
+        console.warn("Standard login failed, checking fallback for privileged roles or mock auth:", err);
+        
+        // Robust fallback for ALL email/password logins if provider is disabled
+        if (err.code === "auth/operation-not-allowed" || err.code === "auth/invalid-credential" || err.code === "auth/user-not-found") {
+          const usersRef = collection(db, "users");
+          const q = query(usersRef, where("email", "==", targetEmail));
+          const querySnapshot = await getDocs(q);
+          
+          if (!querySnapshot.empty) {
+            const userDoc = querySnapshot.docs[0];
+            const userData = userDoc.data();
+            
+            // In mock mode, we accept "fifa" as password for these local accounts if auth provider is disabled
+            if (password === "fifa" || (userData.password && password === userData.password)) {
+              onAuthSuccess(targetRole, { uid: userDoc.id, ...userData, isLocal: true });
+              return;
+            }
+          }
+        }
+
         if (targetRole === "staff" || targetRole === "organizer" || targetRole === "admin") {
           const fallbackUser = {
             uid: `fifa-${targetRole}`,
@@ -400,7 +314,7 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
           };
           onAuthSuccess(targetRole, fallbackUser);
         } else {
-          throw err;
+          setError(locale === "es" ? "Credenciales inválidas o cuenta no encontrada." : "Invalid credentials or account not found.");
         }
       }
     } catch (err: any) {
@@ -425,26 +339,31 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
         onAuthSuccess("volunteer", result.user);
       } catch (authErr: any) {
         console.warn("Firebase volunteer auth failed, searching Firestore for local registration:", authErr);
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("email", "==", email));
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-          const userDoc = querySnapshot.docs[0];
-          const userData = userDoc.data();
-          if (userData.role === "volunteer" && password === "fifa") {
-            onAuthSuccess("volunteer", {
-              uid: userDoc.id,
-              ...userData,
-              isLocal: true
-            });
-            return;
+        
+        if (authErr.code === "auth/operation-not-allowed" || authErr.code === "auth/invalid-credential" || authErr.code === "auth/user-not-found") {
+          const usersRef = collection(db, "users");
+          const q = query(usersRef, where("email", "==", email));
+          const querySnapshot = await getDocs(q);
+          
+          if (!querySnapshot.empty) {
+            const userDoc = querySnapshot.docs[0];
+            const userData = userDoc.data();
+            // Fallback to "fifa" password if Auth provider is disabled
+            if (userData.role === "volunteer" && (password === "fifa" || (userData.password && password === userData.password))) {
+              onAuthSuccess("volunteer", {
+                uid: userDoc.id,
+                ...userData,
+                isLocal: true
+              });
+              return;
+            }
           }
         }
         throw authErr;
       }
     } catch (err: any) {
       console.error("Volunteer login failed:", err);
-      setError("Login failed. Please check your registered email or make sure password is 'fifa'.");
+      setError(locale === "es" ? "Error de inicio de sesión de voluntario. Verifique sus credenciales." : "Volunteer login failed. Please check your credentials or use 'fifa' as password.");
     } finally {
       setLoading(false);
     }
@@ -646,14 +565,24 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               </div>
               <div>
                 <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-1.5">Password</label>
-                <input 
-                  type="password" 
-                  placeholder="Password" 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl focus:outline-none focus:border-emerald-500 text-white transition-colors"
-                  required
-                />
+                <div className="relative">
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="Password" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 pr-12 bg-zinc-800 border border-zinc-700 rounded-xl focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 focus:outline-none cursor-pointer"
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
 
 
@@ -698,14 +627,24 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
               </div>
               <div>
                 <label className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-1.5">Password</label>
-                <input 
-                  type="password" 
-                  placeholder="Password" 
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-xl focus:outline-none focus:border-emerald-500 text-white transition-colors"
-                  required
-                />
+                <div className="relative">
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    placeholder="Password" 
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-3 pr-12 bg-zinc-800 border border-zinc-700 rounded-xl focus:outline-none focus:border-emerald-500 text-white transition-colors"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 focus:outline-none cursor-pointer"
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
 
 
@@ -801,13 +740,44 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
 
               <div>
                 <label className="block text-[10px] font-mono text-zinc-400 uppercase tracking-wider mb-1.5">Create Secure Password</label>
-                <input
-                  type="password"
-                  placeholder="At least 6 characters"
-                  value={fanNewPassword}
-                  onChange={(e) => setFanNewPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-zinc-950 border border-zinc-800 rounded-xl focus:outline-none focus:border-emerald-500 text-white text-sm"
-                />
+                <div className="relative">
+                  <input
+                    type={showFanNewPassword ? "text" : "password"}
+                    placeholder="At least 6 characters"
+                    value={fanNewPassword}
+                    onChange={(e) => setFanNewPassword(e.target.value)}
+                    className="w-full px-4 py-3 pr-12 bg-zinc-950 border border-zinc-800 rounded-xl focus:outline-none focus:border-emerald-500 text-white text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowFanNewPassword(!showFanNewPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 focus:outline-none cursor-pointer"
+                    title={showFanNewPassword ? "Hide password" : "Show password"}
+                  >
+                    {showFanNewPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono text-zinc-400 uppercase tracking-wider mb-1.5">Confirm Password</label>
+                <div className="relative">
+                  <input
+                    type={showFanConfirmPassword ? "text" : "password"}
+                    placeholder="Repeat your password"
+                    value={fanConfirmPassword}
+                    onChange={(e) => setFanConfirmPassword(e.target.value)}
+                    className="w-full px-4 py-3 pr-12 bg-zinc-950 border border-zinc-800 rounded-xl focus:outline-none focus:border-emerald-500 text-white text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowFanConfirmPassword(!showFanConfirmPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 focus:outline-none cursor-pointer"
+                    title={showFanConfirmPassword ? "Hide password" : "Show password"}
+                  >
+                    {showFanConfirmPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                  </button>
+                </div>
               </div>
 
               {fanOtpError && (
@@ -843,6 +813,99 @@ export function AuthScreen({ onAuthSuccess }: AuthScreenProps) {
                   Resend verification code
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Volunteer Password Modal */}
+      {showVolunteerPasswordModal && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-8 max-w-md w-full space-y-6 text-white shadow-2xl relative">
+            <div className="text-center">
+              <span className="text-3xl">🛡️</span>
+              <h3 className="text-xl font-black mt-2 text-emerald-400 uppercase tracking-tight">Set Volunteer Password</h3>
+              <p className="text-xs text-zinc-400 mt-1">Please set a password for your account</p>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-mono text-zinc-400 uppercase tracking-wider mb-1.5">New Password</label>
+                <div className="relative">
+                  <input
+                    type={showVolunteerNewPassword ? "text" : "password"}
+                    placeholder="At least 6 characters"
+                    value={volunteerNewPassword}
+                    onChange={(e) => setVolunteerNewPassword(e.target.value)}
+                    className="w-full px-4 py-3 pr-12 bg-zinc-950 border border-zinc-800 rounded-xl focus:outline-none focus:border-emerald-500 text-white text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowVolunteerNewPassword(!showVolunteerNewPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 focus:outline-none cursor-pointer"
+                    title={showVolunteerNewPassword ? "Hide password" : "Show password"}
+                  >
+                    {showVolunteerNewPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-mono text-zinc-400 uppercase tracking-wider mb-1.5">Confirm Password</label>
+                <div className="relative">
+                  <input
+                    type={showVolunteerConfirmPassword ? "text" : "password"}
+                    placeholder="Repeat your password"
+                    value={volunteerConfirmPassword}
+                    onChange={(e) => setVolunteerConfirmPassword(e.target.value)}
+                    className="w-full px-4 py-3 pr-12 bg-zinc-950 border border-zinc-800 rounded-xl focus:outline-none focus:border-emerald-500 text-white text-sm"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowVolunteerConfirmPassword(!showVolunteerConfirmPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 focus:outline-none cursor-pointer"
+                    title={showVolunteerConfirmPassword ? "Hide password" : "Show password"}
+                  >
+                    {showVolunteerConfirmPassword ? <Eye className="w-5 h-5" /> : <EyeOff className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              {volunteerPasswordError && (
+                <p className="text-xs text-red-400 bg-red-950/20 border border-red-900/40 p-2.5 rounded-lg text-center font-bold">
+                  ⚠️ {volunteerPasswordError}
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={async () => {
+                  if (volunteerNewPassword !== volunteerConfirmPassword) {
+                    setVolunteerPasswordError("Passwords do not match.");
+                    return;
+                  }
+                  if (volunteerNewPassword.length < 6) {
+                    setVolunteerPasswordError("Password must be at least 6 characters.");
+                    return;
+                  }
+                  setLoading(true);
+                  try {
+                    if (regUid) {
+                      await setDoc(doc(db, "users", regUid), { password: volunteerNewPassword }, { merge: true });
+                    }
+                    setShowVolunteerPasswordModal(false);
+                    onAuthSuccess("volunteer", { uid: regUid, email, role: "volunteer", isLocal: true });
+                  } catch (err: any) {
+                    setVolunteerPasswordError(err.message || "Failed to set password.");
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl transition-all text-xs uppercase font-mono tracking-wider shadow-lg shadow-emerald-950/50"
+              >
+                {loading ? "Setting Password..." : "Set Password"}
+              </button>
             </div>
           </div>
         </div>

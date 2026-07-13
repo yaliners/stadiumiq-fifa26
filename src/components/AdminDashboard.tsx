@@ -8,7 +8,7 @@ import {
   PlusCircle, Sparkles, DollarSign, Send, Flame, AlertOctagon, Gift, 
   BarChart3, Star, TrendingUp, CheckCircle, Clock, ShieldAlert, Radio,
   Tv, Award, ArrowUpRight, Search, Activity, Trash2, ShieldCheck as VerifiedIcon,
-  Check, X
+  Check, X, Settings, Globe, Palette
 } from "lucide-react";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
@@ -220,12 +220,15 @@ const t_op = {
 
 interface AdminDashboardProps {
   locale?: "en" | "es" | "fr";
+  selectedStadium?: string;
+  setSelectedStadium?: (stadiumId: string) => void;
+  stadiums?: any[];
 }
 
-export function AdminDashboard({ locale = "en" }: AdminDashboardProps) {
+export function AdminDashboard({ locale = "en", selectedStadium, setSelectedStadium, stadiums }: AdminDashboardProps) {
   const [showChat, setShowChat] = useState(false);
   const [activities, setActivities] = useState<ActivityLog[]>([]);
-  const [activeTab, setActiveTab] = useState<"users_roles" | "coordination" | "organizer_controls" | "fan_engagement" | "analytics" | "crowd_control" | "task_automation" | "ai_guardrails" | "performance_analytics">("users_roles");
+  const [activeTab, setActiveTab] = useState<"users_roles" | "coordination" | "organizer_controls" | "fan_engagement" | "analytics" | "crowd_control" | "task_automation" | "ai_guardrails" | "performance_analytics" | "system_admin">("users_roles");
 
   // Notifications helper
   const [notificationToast, setNotificationToast] = useState<string | null>(null);
@@ -242,11 +245,41 @@ export function AdminDashboard({ locale = "en" }: AdminDashboardProps) {
   const [heatmapFlow, setHeatmapFlow] = useState<"entry" | "mid" | "exit">("entry");
 
   // 2. Task Automation states
-  const [volunteersList, setVolunteersList] = useState([
-    { id: "vl1", name: "Sarah Connor", languages: ["Spanish", "French"], zone: "Gate A Concourse", assignedTo: null as string | null },
-    { id: "vl2", name: "David Beckham", languages: ["English", "German"], zone: "Block 102", assignedTo: null as string | null },
-    { id: "vl3", name: "Neymar Jr", languages: ["Portuguese", "Spanish"], zone: "Gate C West", assignedTo: null as string | null }
-  ]);
+  const getVolunteersForStadium = (stadiumId: string) => {
+    const volMap: Record<string, { id: string; name: string; languages: string[]; zone: string; assignedTo: string | null }[]> = {
+      st_sofi: [
+        { id: "vl1", name: "Sarah Connor", languages: ["Spanish", "French"], zone: "Gate A Concourse", assignedTo: null },
+        { id: "vl2", name: "David Beckham", languages: ["English", "German"], zone: "Block 102", assignedTo: null },
+        { id: "vl3", name: "Neymar Jr", languages: ["Portuguese", "Spanish"], zone: "Gate C West", assignedTo: null }
+      ],
+      st_metlife: [
+        { id: "vl1", name: "Maria Garcia", languages: ["Spanish", "English"], zone: "Gate B Plaza", assignedTo: null },
+        { id: "vl2", name: "John Smith", languages: ["English", "Italian"], zone: "Section 204", assignedTo: null }
+      ],
+      st_mercedes: [
+        { id: "vl1", name: "Aisha Khan", languages: ["English", "Arabic"], zone: "Gate C Entry", assignedTo: null }
+      ],
+      st_mbs: [
+        { id: "vl1", name: "Aisha Khan", languages: ["English", "Arabic"], zone: "Gate C Entry", assignedTo: null }
+      ],
+      st_azteca: [
+        { id: "vl1", name: "Juan Hernandez", languages: ["Spanish"], zone: "Lower Deck Gate G", assignedTo: null },
+        { id: "vl2", name: "Sofia Rodriguez", languages: ["Spanish", "English"], zone: "Ramp West", assignedTo: null }
+      ],
+      st_bcplace: [
+        { id: "vl1", name: "Emily White", languages: ["English", "French"], zone: "Level 2 Concourse", assignedTo: null }
+      ],
+      st_hardrock: [
+        { id: "vl1", name: "Maria Garcia", languages: ["Spanish", "English"], zone: "Gate B Plaza", assignedTo: null }
+      ],
+    };
+    return volMap[stadiumId] || volMap.st_sofi;
+  };
+  const [volunteersList, setVolunteersList] = useState(getVolunteersForStadium(selectedStadium));
+
+  useEffect(() => {
+    setVolunteersList(getVolunteersForStadium(selectedStadium));
+  }, [selectedStadium]);
   const [fanRequests, setFanRequests] = useState([
     { id: "fr1", fan: "Fan ID #9421", issue: "Accessibility ramp assistance needed", location: "Sector C West", language: "Spanish", status: "Unassigned" },
     { id: "fr2", fan: "Fan ID #2041", issue: "Translation help at merch stall", location: "Sector B", language: "French", status: "Unassigned" }
@@ -416,25 +449,85 @@ export function AdminDashboard({ locale = "en" }: AdminDashboardProps) {
   };
 
   // 1. User & Role Management States
-  const [users, setUsers] = useState([
-    { id: "u1", name: "Sarah Connor", email: "sarah@stadium.com", currentRole: "Fan", verified: false },
-    { id: "u2", name: "David Beckham", email: "beckham@fifa.com", currentRole: "Volunteer", verified: true },
-    { id: "u3", name: "Marcus Rashford", email: "marcus@stadium.com", currentRole: "Staff", verified: true },
-    { id: "u4", name: "Emma Watson", email: "emma@org.com", currentRole: "Organizer", verified: true },
-    { id: "u5", name: "Neymar Jr", email: "neymar@fifa.com", currentRole: "Volunteer", verified: false }
-  ]);
+  const getUserDataForStadium = (stadiumId: string) => {
+    const userMap: Record<string, { id: string; name: string; email: string; currentRole: string; verified: boolean }[]> = {
+      st_sofi: [
+        { id: "u1", name: "Sarah Connor", email: "sarah@stadium.com", currentRole: "Fan", verified: false },
+        { id: "u2", name: "David Beckham", email: "beckham@fifa.com", currentRole: "Volunteer", verified: true },
+        { id: "u3", name: "Marcus Rashford", email: "marcus@stadium.com", currentRole: "Staff", verified: true },
+        { id: "u4", name: "Emma Watson", email: "emma@org.com", currentRole: "Organizer", verified: true },
+        { id: "u5", name: "Neymar Jr", email: "neymar@fifa.com", currentRole: "Volunteer", verified: false }
+      ],
+      st_metlife: [
+        { id: "u1", name: "Maria Garcia", email: "maria@stadium.com", currentRole: "Fan", verified: true },
+        { id: "u2", name: "John Smith", email: "john@stadium.com", currentRole: "Volunteer", verified: true }
+      ],
+      st_mercedes: [
+        { id: "u1", name: "Aisha Khan", email: "aisha@stadium.com", currentRole: "Staff", verified: true }
+      ],
+      st_mbs: [
+        { id: "u1", name: "Aisha Khan", email: "aisha@stadium.com", currentRole: "Staff", verified: true }
+      ],
+      st_azteca: [
+        { id: "u1", name: "Juan Hernandez", email: "juan@stadium.com", currentRole: "Fan", verified: false },
+        { id: "u2", name: "Sofia Rodriguez", email: "sofia@stadium.com", currentRole: "Volunteer", verified: true }
+      ],
+      st_bcplace: [
+        { id: "u1", name: "Emily White", email: "emily@stadium.com", currentRole: "Volunteer", verified: true }
+      ],
+      st_hardrock: [
+        { id: "u1", name: "Maria Garcia", email: "maria@hardrock.com", currentRole: "Staff", verified: true }
+      ],
+    };
+    return userMap[stadiumId] || userMap.st_sofi;
+  };
+  const [users, setUsers] = useState(getUserDataForStadium(selectedStadium));
 
-  const [credentials, setCredentials] = useState([
-    { id: "c1", name: "Neymar Jr", role: "Volunteer", type: "Background Check", file: "BG-9942-APPROVED.pdf", status: "Pending" },
-    { id: "c2", name: "Sarah Connor", role: "Volunteer", type: "First Aid Certificate", file: "FA-8831-VALID.pdf", status: "Pending" },
-    { id: "c3", name: "Emma Watson", role: "Staff", type: "Stadium Access ID Badge", file: "ID-1102-VALID.png", status: "Approved" }
-  ]);
+  const getCredentialsForStadium = (stadiumId: string) => {
+    const credMap: Record<string, { id: string; name: string; role: string; type: string; file: string; status: string }[]> = {
+      st_sofi: [
+        { id: "c1", name: "Neymar Jr", role: "Volunteer", type: "Background Check", file: "BG-9942-APPROVED.pdf", status: "Pending" },
+        { id: "c2", name: "Sarah Connor", role: "Volunteer", type: "First Aid Certificate", file: "FA-8831-VALID.pdf", status: "Pending" },
+        { id: "c3", name: "Emma Watson", role: "Staff", type: "Stadium Access ID Badge", file: "ID-1102-VALID.png", status: "Approved" }
+      ],
+      st_metlife: [
+        { id: "c1", name: "Maria Garcia", role: "Volunteer", type: "Background Check", file: "BG-1234-VALID.pdf", status: "Approved" }
+      ],
+      st_mercedes: [],
+      st_mbs: [],
+      st_azteca: [
+        { id: "c1", name: "Juan Hernandez", role: "Fan", type: "ID Badge", file: "ID-5678-VALID.png", status: "Pending" }
+      ],
+      st_bcplace: []
+    };
+    return credMap[stadiumId] || credMap.st_sofi;
+  };
+  const [credentials, setCredentials] = useState(getCredentialsForStadium(selectedStadium));
 
-  const [accessLogs, setAccessLogs] = useState([
-    { id: "al1", action: "Promoted Emma Watson to Organizer", author: "Admin (Self)", timestamp: "10:14 AM" },
-    { id: "al2", action: "Approved Background Check for Sarah Connor", author: "Admin (Self)", timestamp: "09:42 AM" },
-    { id: "al3", action: "Dispatched 'Clean-up checklist' to Sector 3 Volunteers", author: "Admin (Self)", timestamp: "08:15 AM" }
-  ]);
+  const getAccessLogsForStadium = (stadiumId: string) => {
+    const logMap: Record<string, { id: string; action: string; author: string; timestamp: string }[]> = {
+      st_sofi: [
+        { id: "al1", action: "Promoted Emma Watson to Organizer", author: "Admin (Self)", timestamp: "10:14 AM" },
+        { id: "al2", action: "Approved Background Check for Sarah Connor", author: "Admin (Self)", timestamp: "09:42 AM" },
+        { id: "al3", action: "Dispatched 'Clean-up checklist' to Sector 3 Volunteers", author: "Admin (Self)", timestamp: "08:15 AM" }
+      ],
+      st_metlife: [
+        { id: "al1", action: "System init for MetLife", author: "Admin (System)", timestamp: "07:00 AM" }
+      ],
+      st_mercedes: [],
+      st_mbs: [],
+      st_azteca: [],
+      st_bcplace: []
+    };
+    return logMap[stadiumId] || logMap.st_sofi;
+  };
+  const [accessLogs, setAccessLogs] = useState(getAccessLogsForStadium(selectedStadium));
+
+  useEffect(() => {
+    setUsers(getUserDataForStadium(selectedStadium));
+    setCredentials(getCredentialsForStadium(selectedStadium));
+    setAccessLogs(getAccessLogsForStadium(selectedStadium));
+  }, [selectedStadium]);
 
   // 2. Volunteer & Staff Coordination States
   const [shifts, setShifts] = useState([
@@ -458,10 +551,10 @@ export function AdminDashboard({ locale = "en" }: AdminDashboardProps) {
 
   // 3. Organizer Controls States
   const [events, setEvents] = useState([
-    { id: "ev1", match: "Argentina vs France", venue: "Stadium A", date: "2026-07-15", time: "18:00", gateOpen: "15:00", link: "https://fifa.com/tickets", lineup: "Lionel Messi, Kylian Mbappé" },
-    { id: "ev2", match: "Brazil vs England", venue: "Stadium B", date: "2026-07-18", time: "20:00", gateOpen: "17:00", link: "https://fifa.com/tickets", lineup: "Vinicius Jr, Jude Bellingham" }
+    { id: "ev1", match: "France vs Spain", venue: "AT&T Stadium", date: "2026-07-15", time: "00:30", gateOpen: "21:30", link: "https://fifa.com/tickets", lineup: "Mbappé, Yamal" },
+    { id: "ev2", match: "England vs Argentina", venue: "Mercedes-Benz Stadium", date: "2026-07-15", time: "00:30", gateOpen: "21:30", link: "https://fifa.com/tickets", lineup: "Kane, Messi" }
   ]);
-  const [newEvent, setNewEvent] = useState({ match: "", venue: "Stadium A", date: "", time: "", gateOpen: "", link: "", lineup: "" });
+  const [newEvent, setNewEvent] = useState({ match: "", venue: "AT&T Stadium", date: "", time: "", gateOpen: "", link: "", lineup: "" });
 
   const [sponsors, setSponsors] = useState([
     { id: "sp1", brand: "Visa Inc.", bannerUrl: "VISA-WORLD-CUP-26", active: true },
@@ -480,6 +573,94 @@ export function AdminDashboard({ locale = "en" }: AdminDashboardProps) {
     merchandise: 84300,
     vendorCuts: 32400
   });
+
+  // System-wide Stadium Synchronization for Admin Page
+  useEffect(() => {
+    if (!selectedStadium) return;
+    const stadiumNames: Record<string, string> = {
+      st_sofi: "SoFi Stadium",
+      st_metlife: "MetLife Stadium",
+      st_mercedes: "Mercedes-Benz Stadium",
+      st_azteca: "Estadio Azteca",
+      st_bcplace: "BC Place",
+      st_hardrock: "Hard Rock Stadium"
+    };
+    const activeName = stadiumNames[selectedStadium] || "SoFi Stadium";
+
+    // Dynamic Events Sync
+    const matchesMap: Record<string, any[]> = {
+      st_sofi: [
+        { id: "ev-sofi-1", match: "USA vs Paraguay", venue: "SoFi Stadium", date: "2026-06-13", time: "21:00", gateOpen: "18:00", link: "https://fifa.com/tickets", lineup: "Pulisic, Almiron" },
+        { id: "ev-sofi-2", match: "Quarter-Final Match 98", venue: "SoFi Stadium", date: "2026-07-10", time: "18:00", gateOpen: "15:00", link: "https://fifa.com/tickets", lineup: "TBD vs TBD" }
+      ],
+      st_metlife: [
+        { id: "ev-met-1", match: "FIFA WC Final", venue: "MetLife Stadium", date: "2026-07-20", time: "00:30", gateOpen: "21:30", link: "https://fifa.com/tickets", lineup: "France vs Spain (Finalists)" },
+        { id: "ev-met-2", match: "Round of 16 Match 82", venue: "MetLife Stadium", date: "2026-07-05", time: "17:00", gateOpen: "14:00", link: "https://fifa.com/tickets", lineup: "Germany vs Portugal" }
+      ],
+      st_mercedes: [
+        { id: "ev-mbs-1", match: "England vs Argentina", venue: "Mercedes-Benz Stadium", date: "2026-07-15", time: "00:30", gateOpen: "21:30", link: "https://fifa.com/tickets", lineup: "Kane, Messi" },
+        { id: "ev-mbs-2", match: "Group Stage Match 14", venue: "Mercedes-Benz Stadium", date: "2026-06-16", time: "20:00", gateOpen: "17:00", link: "https://fifa.com/tickets", lineup: "England vs Senegal" }
+      ],
+      st_azteca: [
+        { id: "ev-azt-1", match: "Mexico vs South Africa", venue: "Estadio Azteca", date: "2026-06-12", time: "23:00", gateOpen: "20:00", link: "https://fifa.com/tickets", lineup: "Jimenez, Foster" },
+        { id: "ev-azt-2", match: "Round of 32 Match 51", venue: "Estadio Azteca", date: "2026-07-02", time: "19:00", gateOpen: "16:00", link: "https://fifa.com/tickets", lineup: "Mexico vs Argentina" }
+      ],
+      st_bcplace: [
+        { id: "ev-bcp-1", match: "Australia vs Türkiye", venue: "BC Place", date: "2026-06-14", time: "22:00", gateOpen: "19:00", link: "https://fifa.com/tickets", lineup: "Mooy, Calhanoglu" },
+        { id: "ev-bcp-2", match: "Round of 32 Match 58", venue: "BC Place", date: "2026-07-03", time: "18:00", gateOpen: "15:00", link: "https://fifa.com/tickets", lineup: "Canada vs Japan" }
+      ],
+      st_hardrock: [
+        { id: "ev-hr-1", match: "Hard Rock Opening Match", venue: "Hard Rock Stadium", date: "2026-06-15", time: "20:00", gateOpen: "17:00", link: "https://fifa.com/tickets", lineup: "TBD" }
+      ]
+    };
+
+    const activeEvents = matchesMap[selectedStadium] || [
+      { id: "ev-default", match: "Group Stage Match", venue: activeName, date: "2026-07-15", time: "00:30", gateOpen: "21:30", link: "https://fifa.com/tickets", lineup: "TBD vs TBD" }
+    ];
+    setEvents(activeEvents);
+
+    // Dynamic Concessions Sync (Cost Synchronization)
+    const baseVendors = [
+      { id: "v1", item: "World Cup Burger Combo", price: 14.50, category: "Food" },
+      { id: "v2", item: "FIFA 2026 Golden Scarf", price: 25.00, category: "Merch" },
+      { id: "v3", item: "Stadium Brew Coffee", price: 5.50, category: "Food" }
+    ];
+    const priceMultipliers: Record<string, number> = {
+      st_sofi: 1.2,
+      st_metlife: 1.25,
+      st_mercedes: 1.0,
+      st_azteca: 0.7,
+      st_bcplace: 0.95
+    };
+    const mult = priceMultipliers[selectedStadium] || 1.0;
+    const updatedVendors = baseVendors.map(v => ({
+      ...v,
+      price: parseFloat((v.price * mult).toFixed(2))
+    }));
+    setVendors(updatedVendors);
+
+    // Dynamic Revenue Sync
+    const revenueMap: Record<string, { tickets: number; merchandise: number; vendorCuts: number }> = {
+      st_sofi: { tickets: 110000, merchandise: 62000, vendorCuts: 30000 },
+      st_metlife: { tickets: 195000, merchandise: 105000, vendorCuts: 58000 },
+      st_mercedes: { tickets: 145200, merchandise: 84300, vendorCuts: 32400 },
+      st_azteca: { tickets: 95000, merchandise: 48000, vendorCuts: 18000 },
+      st_bcplace: { tickets: 125000, merchandise: 68000, vendorCuts: 24000 },
+      st_att: { tickets: 120000, merchandise: 65000, vendorCuts: 32000 },
+      st_arrowhead: { tickets: 115000, merchandise: 60000, vendorCuts: 28000 },
+      st_bmo: { tickets: 75000, merchandise: 40000, vendorCuts: 18000 },
+      st_akron: { tickets: 90000, merchandise: 50000, vendorCuts: 22000 },
+      st_bbva: { tickets: 95000, merchandise: 52000, vendorCuts: 24000 },
+      st_gillette: { tickets: 105000, merchandise: 58000, vendorCuts: 26000 },
+      st_hardrock: { tickets: 110000, merchandise: 60000, vendorCuts: 29000 },
+      st_levis: { tickets: 115000, merchandise: 63000, vendorCuts: 31000 },
+      st_lincoln: { tickets: 100000, merchandise: 55000, vendorCuts: 26000 },
+      st_lumen: { tickets: 95000, merchandise: 50000, vendorCuts: 23000 },
+      st_nrg: { tickets: 105000, merchandise: 58000, vendorCuts: 27000 },
+    };
+    const activeRevenue = revenueMap[selectedStadium] || { tickets: 120000, merchandise: 60000, vendorCuts: 22000 };
+    setRevenue(activeRevenue);
+  }, [selectedStadium]);
 
   // 4. Fan Engagement & Safety States
   const [broadcastAlerts, setBroadcastAlerts] = useState([
@@ -672,7 +853,7 @@ export function AdminDashboard({ locale = "en" }: AdminDashboardProps) {
     const msg = `Created new match event: ${newEvent.match} at ${newEvent.venue}`;
     logActivity(msg);
     showToast(`✓ event created: ${newEvent.match}`);
-    setNewEvent({ match: "", venue: "Stadium A", date: "", time: "", gateOpen: "", link: "", lineup: "" });
+    setNewEvent({ match: "", venue: "AT&T Stadium", date: "", time: "", gateOpen: "", link: "", lineup: "" });
   };
 
   const toggleSponsor = (id: string) => {
@@ -738,18 +919,47 @@ export function AdminDashboard({ locale = "en" }: AdminDashboardProps) {
   return (
     <div className="w-full text-white space-y-6">
       {/* Top Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-zinc-900 border border-zinc-800 p-6 rounded-3xl shadow-xl">
-        <div>
-          <h2 className="text-2xl font-black tracking-tight text-white uppercase flex items-center gap-2">
-            <Radio className="w-6 h-6 text-emerald-400 animate-pulse" /> StadiumIQ Admin Control Center
-          </h2>
-          <p className="text-zinc-400 text-xs font-mono uppercase tracking-widest mt-1">
-            Global Stadium Operations • FIFA 2026 Core Infrastructure
-          </p>
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-zinc-900 border border-zinc-800 p-6 rounded-3xl shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 lg:gap-6 w-full lg:w-auto">
+          <div>
+            <h2 className="text-xl md:text-2xl font-black tracking-tight text-white uppercase flex items-center gap-2">
+              <Radio className="w-6 h-6 text-emerald-400 animate-pulse" /> StadiumIQ Admin Control Center
+            </h2>
+            <p className="text-zinc-400 text-xs font-mono uppercase tracking-widest mt-1">
+              Global Stadium Operations • FIFA 2026 Core Infrastructure
+            </p>
+          </div>
+          {setSelectedStadium && (
+            <div className="flex items-center gap-2 bg-zinc-950 px-4 py-2 rounded-2xl border border-emerald-500/20 shadow-inner w-full md:w-auto">
+              <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest shrink-0">ACTIVE STADIUM:</span>
+              <select
+                value={selectedStadium}
+                onChange={(e) => setSelectedStadium(e.target.value)}
+                className="bg-transparent text-emerald-400 font-black text-xs font-mono focus:outline-none cursor-pointer pr-2 border-none w-full md:w-auto"
+              >
+                <option value="st_sofi" className="bg-zinc-950 text-white">SoFi Stadium (Los Angeles)</option>
+                <option value="st_metlife" className="bg-zinc-950 text-white">MetLife Stadium (New Jersey)</option>
+                <option value="st_mercedes" className="bg-zinc-950 text-white">Mercedes-Benz Stadium (Atlanta)</option>
+                <option value="st_azteca" className="bg-zinc-950 text-white">Estadio Azteca (Mexico City)</option>
+                <option value="st_bcplace" className="bg-zinc-950 text-white">BC Place (Vancouver)</option>
+                <option value="st_att" className="bg-zinc-950 text-white">AT&T Stadium (Arlington)</option>
+                <option value="st_arrowhead" className="bg-zinc-950 text-white">Arrowhead Stadium (Kansas City)</option>
+                <option value="st_bmo" className="bg-zinc-950 text-white">BMO Field (Toronto)</option>
+                <option value="st_akron" className="bg-zinc-950 text-white">Estadio Akron (Guadalajara)</option>
+                <option value="st_bbva" className="bg-zinc-950 text-white">Estadio BBVA (Monterrey)</option>
+                <option value="st_gillette" className="bg-zinc-950 text-white">Gillette Stadium (Foxborough)</option>
+                <option value="st_hardrock" className="bg-zinc-950 text-white">Hard Rock Stadium (Miami)</option>
+                <option value="st_levis" className="bg-zinc-950 text-white">Levi's Stadium (Santa Clara)</option>
+                <option value="st_lincoln" className="bg-zinc-950 text-white">Lincoln Financial Field (Philadelphia)</option>
+                <option value="st_lumen" className="bg-zinc-950 text-white">Lumen Field (Seattle)</option>
+                <option value="st_nrg" className="bg-zinc-950 text-white">NRG Stadium (Houston)</option>
+              </select>
+            </div>
+          )}
         </div>
         <button 
           onClick={() => setShowChat(!showChat)} 
-          className="px-5 py-2.5 bg-emerald-600 rounded-2xl hover:bg-emerald-500 hover:scale-103 active:scale-97 transition-all text-sm font-bold flex items-center gap-2 text-white shadow-lg shadow-emerald-950/40"
+          className="px-5 py-2.5 bg-emerald-600 rounded-2xl hover:bg-emerald-500 hover:scale-103 active:scale-97 transition-all text-sm font-bold flex items-center gap-2 text-white shadow-lg shadow-emerald-950/40 w-full lg:w-auto justify-center"
         >
           <MessageSquare className="w-4 h-4"/> Admin Live Operations Chat
         </button>
@@ -766,48 +976,74 @@ export function AdminDashboard({ locale = "en" }: AdminDashboardProps) {
       )}
 
       {/* Core Operational Metrics Strip */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-[#09090b] p-5 rounded-2xl border border-zinc-800 shadow-xl">
-          <div className="flex justify-between items-start">
-            <h3 className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Total Ledger Users</h3>
-            <Users className="w-4 h-4 text-emerald-400" />
+      {(() => {
+        const getStadiumMetrics = (stadiumId: string) => {
+          const map: Record<string, { users: number; volunteers: number; staff: number; sos: number; text: string }> = {
+            st_sofi: { users: 1245, volunteers: 81, staff: 41, sos: 2, text: "↑ 14 new accounts today" },
+            st_metlife: { users: 1480, volunteers: 104, staff: 52, sos: 3, text: "↑ 22 new accounts today" },
+            st_mercedes: { users: 1120, volunteers: 65, staff: 35, sos: 1, text: "↑ 9 new accounts today" },
+            st_mbs: { users: 1120, volunteers: 65, staff: 35, sos: 1, text: "↑ 9 new accounts today" },
+            st_azteca: { users: 1890, volunteers: 120, staff: 60, sos: 4, text: "↑ 31 new accounts today" },
+            st_bcplace: { users: 980, volunteers: 52, staff: 28, sos: 0, text: "↑ 6 new accounts today" }
+          };
+          return map[stadiumId] || { users: 1245, volunteers: 81, staff: 41, sos: 2, text: "↑ 14 new accounts today" };
+        };
+        const currentMetrics = getStadiumMetrics(selectedStadium);
+        return (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="bg-[#09090b] p-5 rounded-2xl border border-zinc-800 shadow-xl">
+              <div className="flex justify-between items-start">
+                <h3 className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Total Ledger Users</h3>
+                <Users className="w-4 h-4 text-emerald-400" />
+              </div>
+              <p className="text-2xl font-black mt-2 text-white">
+                {currentMetrics.users + (users.length > 3 ? users.length - 3 : 0)}
+              </p>
+              <span className="text-[9px] text-emerald-400 font-mono mt-1 block">{currentMetrics.text}</span>
+            </div>
+            <div className="bg-[#09090b] p-5 rounded-2xl border border-zinc-800 shadow-xl">
+              <div className="flex justify-between items-start">
+                <h3 className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">On-Duty Volunteers</h3>
+                <UserCheck className="w-4 h-4 text-emerald-400" />
+              </div>
+              <p className="text-2xl font-black mt-2 text-white">
+                {currentMetrics.volunteers + (trackers.filter(t => t.role === "Volunteer" && t.status === "Checked In").length - 2)}
+              </p>
+              <span className="text-[9px] text-zinc-500 font-mono mt-1 block">Geofenced checked-in tracking</span>
+            </div>
+            <div className="bg-[#09090b] p-5 rounded-2xl border border-zinc-800 shadow-xl">
+              <div className="flex justify-between items-start">
+                <h3 className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Staff On-Duty</h3>
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              </div>
+              <p className="text-2xl font-black mt-2 text-white">
+                {currentMetrics.staff + (trackers.filter(t => t.role === "Staff" && t.status === "Checked In").length - 1)}
+              </p>
+              <span className="text-[9px] text-zinc-500 font-mono mt-1 block">Gates & Concessions security</span>
+            </div>
+            <div className="bg-[#09090b] p-5 rounded-2xl border border-zinc-800 shadow-xl">
+              <div className="flex justify-between items-start">
+                <h3 className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">SOS Alarm hotline</h3>
+                <AlertOctagon className="w-4 h-4 text-rose-500 animate-pulse" />
+              </div>
+              <p className="text-2xl font-black mt-2 text-rose-500 animate-pulse">
+                {currentMetrics.sos + (sosHotline.filter(s => s.status !== "Resolved").length - 1)}
+              </p>
+              <span className="text-[9px] text-rose-400 font-mono mt-1 block">Active priority incidents</span>
+            </div>
+            <div className="bg-[#09090b] p-5 rounded-2xl border border-zinc-800 shadow-xl">
+              <div className="flex justify-between items-start">
+                <h3 className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Aggregate Revenue</h3>
+                <DollarSign className="w-4 h-4 text-emerald-400" />
+              </div>
+              <p className="text-2xl font-black mt-2 text-emerald-400">
+                ${(revenue.tickets + revenue.merchandise + revenue.vendorCuts).toLocaleString()}
+              </p>
+              <span className="text-[9px] text-emerald-500 font-mono mt-1 block">Merged tickets, merch, & cuts</span>
+            </div>
           </div>
-          <p className="text-2xl font-black mt-2 text-white">{users.length + 1240}</p>
-          <span className="text-[9px] text-emerald-400 font-mono mt-1 block">↑ 14 new accounts today</span>
-        </div>
-        <div className="bg-[#09090b] p-5 rounded-2xl border border-zinc-800 shadow-xl">
-          <div className="flex justify-between items-start">
-            <h3 className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">On-Duty Volunteers</h3>
-            <UserCheck className="w-4 h-4 text-emerald-400" />
-          </div>
-          <p className="text-2xl font-black mt-2 text-white">{trackers.filter(t => t.role === "Volunteer" && t.status === "Checked In").length + 80}</p>
-          <span className="text-[9px] text-zinc-500 font-mono mt-1 block">Geofenced checked-in tracking</span>
-        </div>
-        <div className="bg-[#09090b] p-5 rounded-2xl border border-zinc-800 shadow-xl">
-          <div className="flex justify-between items-start">
-            <h3 className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Staff On-Duty</h3>
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          </div>
-          <p className="text-2xl font-black mt-2 text-white">{trackers.filter(t => t.role === "Staff" && t.status === "Checked In").length + 40}</p>
-          <span className="text-[9px] text-zinc-500 font-mono mt-1 block">Gates & Concessions security</span>
-        </div>
-        <div className="bg-[#09090b] p-5 rounded-2xl border border-zinc-800 shadow-xl">
-          <div className="flex justify-between items-start">
-            <h3 className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">SOS Alarm hotline</h3>
-            <AlertOctagon className="w-4 h-4 text-rose-500 animate-pulse" />
-          </div>
-          <p className="text-2xl font-black mt-2 text-rose-500 animate-pulse">{sosHotline.filter(s => s.status !== "Resolved").length}</p>
-          <span className="text-[9px] text-rose-400 font-mono mt-1 block">Active priority incidents</span>
-        </div>
-        <div className="bg-[#09090b] p-5 rounded-2xl border border-zinc-800 shadow-xl">
-          <div className="flex justify-between items-start">
-            <h3 className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Aggregate Revenue</h3>
-            <DollarSign className="w-4 h-4 text-emerald-400" />
-          </div>
-          <p className="text-2xl font-black mt-2 text-emerald-400">${(revenue.tickets + revenue.merchandise + revenue.vendorCuts).toLocaleString()}</p>
-          <span className="text-[9px] text-emerald-500 font-mono mt-1 block">Merged tickets, merch, & cuts</span>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Navigation Sub-Tabs */}
       <div className="border-b border-zinc-800 flex overflow-x-auto gap-2 pb-1 scrollbar-none">
@@ -820,7 +1056,8 @@ export function AdminDashboard({ locale = "en" }: AdminDashboardProps) {
           { id: "crowd_control", label: "Crowd & Heatmap", icon: Activity },
           { id: "task_automation", label: "AI Task Sync", icon: Sparkles },
           { id: "ai_guardrails", label: "AI Agent & Guardrails", icon: ShieldAlert },
-          { id: "performance_analytics", label: "Operational Performance", icon: TrendingUp }
+          { id: "performance_analytics", label: "Operational Performance", icon: TrendingUp },
+          { id: "system_admin", label: "System & Master Admin", icon: Settings }
         ].map((tab) => {
           const IconComponent = tab.icon;
           return (
@@ -1196,9 +1433,12 @@ export function AdminDashboard({ locale = "en" }: AdminDashboardProps) {
                     onChange={(e) => setNewEvent(prev => ({ ...prev, venue: e.target.value }))}
                     className="w-full bg-zinc-950 border border-zinc-800 p-2.5 rounded-xl text-white font-sans focus:outline-none"
                   >
-                    <option value="Stadium A">Stadium A</option>
-                    <option value="Stadium B">Stadium B</option>
-                    <option value="Stadium C">Stadium C</option>
+                    <option value="AT&T Stadium">AT&T Stadium, Dallas</option>
+                    <option value="Mercedes-Benz Stadium">Mercedes-Benz Stadium, Atlanta</option>
+                    <option value="MetLife Stadium">MetLife Stadium, New Jersey</option>
+                    <option value="Hard Rock Stadium">Hard Rock Stadium, Miami</option>
+                    <option value="Estadio Azteca">Estadio Azteca, Mexico City</option>
+                    <option value="BC Place">BC Place, Vancouver</option>
                   </select>
                 </div>
                 <div>
@@ -1522,24 +1762,38 @@ export function AdminDashboard({ locale = "en" }: AdminDashboardProps) {
 
               {/* Grid representation of stadium box suites */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center text-xs font-mono">
-                {[
-                  { tier: "Lower Concourse A", fans: 18500, ratio: "220:1", density: "High", color: "border-red-500/40 bg-red-950/10 text-red-400" },
-                  { tier: "Lower Concourse B", fans: 19200, ratio: "240:1", density: "High", color: "border-red-500/40 bg-red-950/10 text-red-400" },
-                  { tier: "Main Club Suites", fans: 5400, ratio: "45:1", density: "Optimal", color: "border-emerald-500/40 bg-emerald-950/10 text-emerald-400" },
-                  { tier: "Upper Box Sectors", fans: 22100, ratio: "310:1", density: "High", color: "border-red-500/40 bg-red-950/10 text-red-400" },
-                  { tier: "North Gate Stands", fans: 8900, ratio: "110:1", density: "Moderate", color: "border-amber-500/40 bg-amber-950/10 text-amber-400" },
-                  { tier: "South Gate Stands", fans: 7800, ratio: "95:1", density: "Optimal", color: "border-emerald-500/40 bg-emerald-950/10 text-emerald-400" },
-                  { tier: "Press Concourse Level", fans: 1200, ratio: "15:1", density: "Optimal", color: "border-emerald-500/40 bg-emerald-950/10 text-emerald-400" },
-                  { tier: "Executive Balcony", fans: 2100, ratio: "20:1", density: "Optimal", color: "border-emerald-500/40 bg-emerald-950/10 text-emerald-400" }
-                ].map((sec, idx) => (
-                  <div key={idx} className={`p-3.5 rounded-xl border ${sec.color} flex flex-col justify-between h-24`}>
-                    <p className="font-bold text-[10px] leading-tight font-sans text-white">{sec.tier}</p>
-                    <div>
-                      <p className="text-[11px] font-bold mt-1">{sec.fans.toLocaleString()} Fans</p>
-                      <p className="text-[9px] opacity-75">Ratio {sec.ratio}</p>
-                    </div>
-                  </div>
-                ))}
+                {(() => {
+                  const capacityScaleMap: Record<string, number> = {
+                    st_sofi: 1.0,
+                    st_metlife: 1.18,
+                    st_mercedes: 1.01,
+                    st_mbs: 1.01,
+                    st_azteca: 1.25,
+                    st_bcplace: 0.78
+                  };
+                  const scale = capacityScaleMap[selectedStadium] || 1.0;
+                  return [
+                    { tier: "Lower Concourse A", fans: 18500, ratio: "220:1", density: "High", color: "border-red-500/40 bg-red-950/10 text-red-400" },
+                    { tier: "Lower Concourse B", fans: 19200, ratio: "240:1", density: "High", color: "border-red-500/40 bg-red-950/10 text-red-400" },
+                    { tier: "Main Club Suites", fans: 5400, ratio: "45:1", density: "Optimal", color: "border-emerald-500/40 bg-emerald-950/10 text-emerald-400" },
+                    { tier: "Upper Box Sectors", fans: 22100, ratio: "310:1", density: "High", color: "border-red-500/40 bg-red-950/10 text-red-400" },
+                    { tier: "North Gate Stands", fans: 8900, ratio: "110:1", density: "Moderate", color: "border-amber-500/40 bg-amber-950/10 text-amber-400" },
+                    { tier: "South Gate Stands", fans: 7800, ratio: "95:1", density: "Optimal", color: "border-emerald-500/40 bg-emerald-950/10 text-emerald-400" },
+                    { tier: "Press Concourse Level", fans: 1200, ratio: "15:1", density: "Optimal", color: "border-emerald-500/40 bg-emerald-950/10 text-emerald-400" },
+                    { tier: "Executive Balcony", fans: 2100, ratio: "20:1", density: "Optimal", color: "border-emerald-500/40 bg-emerald-950/10 text-emerald-400" }
+                  ].map((sec, idx) => {
+                    const dynamicFans = Math.round(sec.fans * scale);
+                    return (
+                      <div key={idx} className={`p-3.5 rounded-xl border ${sec.color} flex flex-col justify-between h-24`}>
+                        <p className="font-bold text-[10px] leading-tight font-sans text-white">{sec.tier}</p>
+                        <div>
+                          <p className="text-[11px] font-bold mt-1">{dynamicFans.toLocaleString()} Fans</p>
+                          <p className="text-[9px] opacity-75">Ratio {sec.ratio}</p>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
 
@@ -2348,89 +2602,158 @@ export function AdminDashboard({ locale = "en" }: AdminDashboardProps) {
                 </table>
               </div>
             </div>
+          </div>
+        )}
 
-            {/* 4. SENTIMENT & FEEDBACK LOOP */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-              {/* CSAT Rating */}
-              <div className="col-span-full lg:col-span-5 bg-zinc-900 p-6 rounded-2xl border border-zinc-800 shadow-xl space-y-4 flex flex-col justify-between">
-                <div>
-                  <h3 className="font-bold text-sm tracking-wider uppercase text-white flex items-center gap-2">
-                    <Star className="w-4 h-4 text-emerald-400" />
-                    {t_op[locale].csat_title}
-                  </h3>
-                  <p className="text-[11px] text-zinc-500 font-mono mt-0.5">
-                    {t_op[locale].csat_desc}
-                  </p>
-                </div>
-
-                <div className="bg-zinc-950 border border-zinc-900 rounded-xl p-5 flex items-center justify-around gap-4 font-mono my-auto">
-                  <div className="text-center">
-                    <p className="text-4xl font-black text-white">4.7 <span className="text-xs text-zinc-500">/ 5</span></p>
-                    <div className="flex justify-center gap-1 text-amber-400 mt-2">
-                      <Star className="w-4 h-4 fill-amber-400" />
-                      <Star className="w-4 h-4 fill-amber-400" />
-                      <Star className="w-4 h-4 fill-amber-400" />
-                      <Star className="w-4 h-4 fill-amber-400" />
-                      <Star className="w-4 h-4 fill-none" />
-                    </div>
-                  </div>
-                  <div className="border-l border-zinc-800 pl-6 space-y-2 text-[11px]">
-                    <div className="flex justify-between gap-4">
-                      <span className="text-zinc-500 uppercase font-bold">Excellent:</span>
-                      <span className="text-emerald-400 font-black">81%</span>
-                    </div>
-                    <div className="flex justify-between gap-4">
-                      <span className="text-zinc-500 uppercase font-bold">Good:</span>
-                      <span className="text-zinc-300">14%</span>
-                    </div>
-                    <div className="flex justify-between gap-4">
-                      <span className="text-zinc-500 uppercase font-bold">Unsatisfactory:</span>
-                      <span className="text-rose-500">5%</span>
-                    </div>
-                  </div>
-                </div>
+        {/* TAB 10: System & Master Admin */}
+        {activeTab === "system_admin" && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            {/* 10.1 System Health Monitor */}
+            <div className="col-span-full lg:col-span-8 bg-[#09090b] p-6 rounded-2xl border border-zinc-800 shadow-xl space-y-6">
+              <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
+                <h3 className="font-bold text-sm tracking-wider uppercase text-white flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-emerald-400" /> Live System Health & Infrastructure Monitor
+                </h3>
+                <span className="text-[10px] text-zinc-500 font-mono">FIFA 2026 Node Cluster: ACTIVE</span>
               </div>
 
-              {/* AI Fallback Monitor */}
-              <div className="col-span-full lg:col-span-7 bg-zinc-900 p-6 rounded-2xl border border-zinc-800 shadow-xl space-y-4 flex flex-col justify-between">
-                <div>
-                  <h3 className="font-bold text-sm tracking-wider uppercase text-white flex items-center gap-2">
-                    <AlertOctagon className="w-4 h-4 text-emerald-400" />
-                    {t_op[locale].fallback_title}
-                  </h3>
-                  <p className="text-[11px] text-zinc-500 font-mono mt-0.5">
-                    {t_op[locale].fallback_desc}
-                  </p>
-                </div>
-
-                <div className="space-y-3 font-mono text-xs">
-                  {fallbackQueries.length > 0 ? (
-                    fallbackQueries.map((item) => (
-                      <div key={item.id} className="p-3 bg-zinc-950 border border-zinc-900 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                        <div className="space-y-1">
-                          <p className="text-white font-bold text-[11px] leading-snug">"{item.phrase}"</p>
-                          <div className="flex items-center gap-2 text-[10px]">
-                            <span className="text-zinc-500 uppercase">Category: <strong className="text-zinc-400">{item.category}</strong></span>
-                            <span className="text-zinc-500">•</span>
-                            <span className="text-rose-500 font-bold bg-rose-950/20 px-1.5 py-0.2 rounded border border-rose-900/20">{item.count} {t_op[locale].chats}</span>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => resolveFallbackQuery(item.id, item.phrase)}
-                          className="px-2.5 py-1.5 bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-600 hover:text-white rounded-lg text-[10px] uppercase font-bold tracking-wider transition-colors shrink-0"
-                        >
-                          {t_op[locale].update_kb}
-                        </button>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="p-8 bg-zinc-950 border border-zinc-900 rounded-xl text-center text-zinc-500 text-[11px]">
-                      {t_op[locale].no_unanswered}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {[
+                  { label: "App Uptime", value: "99.998%", status: "stable", color: "text-emerald-400" },
+                  { label: "Server Load", value: "24%", status: "optimal", color: "text-emerald-400" },
+                  { label: "API Latency", value: "14ms", status: "fast", color: "text-emerald-400" },
+                  { label: "Payment Gateway", value: "Online", status: "active", color: "text-emerald-400" }
+                ].map((item, i) => (
+                  <div key={i} className="p-4 bg-zinc-950 border border-zinc-900 rounded-xl space-y-1">
+                    <span className="text-[9px] text-zinc-500 uppercase tracking-widest block font-mono">{item.label}</span>
+                    <p className={`text-xl font-bold ${item.color} mt-1`}>{item.value}</p>
+                    <div className="flex items-center gap-1 mt-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div>
+                      <span className="text-[9px] text-emerald-500/80 font-mono uppercase">{item.status}</span>
                     </div>
-                  )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest">Active API Integration Tunnels</h4>
+                <div className="space-y-2">
+                  {[
+                    { service: "Gemini AI Core", status: "Operational", load: "12%", uptime: "100%" },
+                    { service: "Firestore DB Cluster", status: "Operational", load: "8%", uptime: "100%" },
+                    { service: "Stripe Connect Portal", status: "Operational", load: "2%", uptime: "99.9%" },
+                    { service: "Google Maps Platform", status: "Operational", load: "45%", uptime: "100%" }
+                  ].map((api, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-zinc-950/50 border border-zinc-900 rounded-xl text-xs font-mono">
+                      <div className="flex items-center gap-3">
+                        <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                        <span className="text-zinc-200 font-bold">{api.service}</span>
+                      </div>
+                      <div className="flex gap-4 text-zinc-500 text-[10px]">
+                        <span>Load: {api.load}</span>
+                        <span>Uptime: {api.uptime}</span>
+                        <span className="text-emerald-500 font-bold">{api.status}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
+
+            {/* 10.2 Global Push Override */}
+            <div className="col-span-full lg:col-span-4 bg-rose-950/10 p-6 rounded-2xl border border-rose-900/30 shadow-xl space-y-4">
+              <div className="flex justify-between items-center border-b border-rose-900/20 pb-3">
+                <h3 className="font-bold text-sm tracking-wider uppercase text-rose-500 flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4" /> Global Emergency Override
+                </h3>
+              </div>
+              <p className="text-[11px] text-rose-400/80 font-mono leading-relaxed">
+                🚨 ATOMIC BROADCAST: This will override ALL user dashboards with a critical emergency message. Use only for life-safety incidents.
+              </p>
+              <textarea 
+                className="w-full bg-rose-950/20 border border-rose-900/40 p-3 rounded-xl text-rose-200 text-xs focus:outline-none focus:border-rose-500 h-24 resize-none placeholder:text-rose-900"
+                placeholder="Enter emergency message (e.g., SEVERE WEATHER WARNING: PLEASE PROCEED TO NEAREST CONCOURSE)"
+              />
+              <button className="w-full py-3 bg-rose-600 hover:bg-rose-500 text-white font-black rounded-xl transition-all uppercase tracking-widest text-xs shadow-lg shadow-rose-950/50">
+                Execute Global Emergency Blast
+              </button>
+            </div>
+
+            {/* 10.3 Master Configuration Settings */}
+            <div className="col-span-full bg-[#09090b] p-6 rounded-2xl border border-zinc-800 shadow-xl space-y-6">
+              <div className="flex justify-between items-center border-b border-zinc-800 pb-3">
+                <h3 className="font-bold text-sm tracking-wider uppercase text-white flex items-center gap-2">
+                  <Settings className="w-4 h-4 text-emerald-400" /> Master Application Settings (Global Config)
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className="space-y-4">
+                  <h4 className="text-[11px] font-bold text-zinc-300 uppercase flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-emerald-500" /> Global Parameters
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-zinc-400">Default Locale</span>
+                      <select className="bg-zinc-950 border border-zinc-800 text-[10px] text-zinc-300 px-2 py-1 rounded">
+                        <option>English (US)</option>
+                        <option>Spanish (MX)</option>
+                      </select>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-zinc-400">Force HTTPS Only</span>
+                      <div className="w-8 h-4 bg-emerald-600 rounded-full relative cursor-pointer">
+                        <div className="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full"></div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-zinc-400">Maintenance Mode</span>
+                      <div className="w-8 h-4 bg-zinc-800 rounded-full relative cursor-pointer">
+                        <div className="absolute left-0.5 top-0.5 w-3 h-3 bg-zinc-500 rounded-full"></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-[11px] font-bold text-zinc-300 uppercase flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-emerald-500" /> Data Privacy Rules
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-zinc-400">GDPR Compliance Mode</span>
+                      <div className="w-8 h-4 bg-emerald-600 rounded-full relative cursor-pointer">
+                        <div className="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full"></div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-zinc-400">Anonymize Logs</span>
+                      <div className="w-8 h-4 bg-emerald-600 rounded-full relative cursor-pointer">
+                        <div className="absolute right-0.5 top-0.5 w-3 h-3 bg-white rounded-full"></div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-zinc-400">Retention Period</span>
+                      <span className="text-[10px] text-zinc-500 font-mono">90 Days</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h4 className="text-[11px] font-bold text-zinc-300 uppercase flex items-center gap-2">
+                    <Palette className="w-4 h-4 text-emerald-500" /> Global Theme Styles
+                  </h4>
+                  <div className="flex gap-2">
+                    {["bg-zinc-900", "bg-slate-900", "bg-emerald-950", "bg-indigo-950"].map((color, i) => (
+                      <div key={i} className={`w-8 h-8 rounded-lg ${color} border-2 ${i === 0 ? "border-emerald-500" : "border-zinc-800"} cursor-pointer`}></div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-zinc-500 font-mono mt-2 uppercase">Stadium Base: Cosmic Slate (Default)</p>
+                </div>
+              </div>
+            </div>
+
           </div>
         )}
 
