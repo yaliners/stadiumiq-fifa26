@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { auth, db } from "../lib/firebase";
-import { GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signInAnonymously, createUserWithEmailAndPassword, signInWithCredential } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signInAnonymously, createUserWithEmailAndPassword, signInWithCredential, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import { doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { User, Shield, Calendar, Heart, Settings, ArrowRight, Check, ExternalLink, FileText, Eye, EyeOff } from "lucide-react";
 
@@ -129,25 +129,7 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
     { name: "admin" as const, icon: Settings },
   ];
 
-  const handleGoogleLogin = async () => {
-    setError("");
-    setLoading(true);
-    try {
-      const provider = new GoogleAuthProvider();
-      provider.setCustomParameters({ prompt: 'select_account' });
-      let result;
-      try {
-        result = await signInWithPopup(auth, provider);
-      } catch (popupErr: any) {
-        console.warn("Popup blocked or failed, attempting redirect:", popupErr);
-        // Fallback or explicit instruction
-        setError("Popup was blocked. Please check your browser settings or try again.");
-        setLoading(false);
-        return;
-      }
-
-      const selectedRole = role || "fan";
-      
+  const processGoogleLogin = async (result: any, selectedRole: "staff" | "organizer" | "volunteer" | "fan" | "admin") => {
       const nameParts = (result.user.displayName || "").trim().split(/\s+/);
       const fName = nameParts[0] || "FIFA";
       const lName = nameParts.slice(1).join(" ") || "Fan";
@@ -164,6 +146,41 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
 
       await setDoc(doc(db, "users", result.user.uid), userData, { merge: true });
       onAuthSuccess(selectedRole, { ...result.user, ...userData });
+  };
+
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result) {
+          setLoading(true);
+          try {
+            await processGoogleLogin(result, role || "fan");
+          } catch (err: any) {
+            console.error("Redirect auth error:", err);
+            setError("Google sign-in failed. Please try again.");
+          } finally {
+            setLoading(false);
+          }
+        }
+      })
+      .catch((err) => {
+        console.error("Redirect error:", err);
+      });
+  }, [auth, role, onAuthSuccess]);
+
+  const handleGoogleLogin = async () => {
+    setError("");
+    setLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      provider.setCustomParameters({ prompt: 'select_account' });
+      try {
+        const result = await signInWithPopup(auth, provider);
+        await processGoogleLogin(result, role || "fan");
+      } catch (popupErr: any) {
+        console.warn("Popup blocked or failed, attempting redirect:", popupErr);
+        await signInWithRedirect(auth, provider);
+      }
     } catch (err: any) {
       console.error("Google Auth error:", err);
       if (err.code === "auth/popup-closed-by-user") {
@@ -171,7 +188,6 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
       } else {
         setError("Google sign-in failed. Please try again.");
       }
-    } finally {
       setLoading(false);
     }
   };
