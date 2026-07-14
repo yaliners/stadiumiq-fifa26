@@ -224,18 +224,16 @@ async function startServer() {
     console.log(`[WebSocket] New client connected. Active clients: ${connectedClients.size}`);
 
     // Push initial active alerts from DB on connection
-    fs.readFile(path.resolve(process.cwd(), "stadium_ops.db"), async (err) => {
-      if (!err) {
-        try {
-          const db = await getWritableDb();
-          const activeAlerts = dbAll(db, "SELECT * FROM alerts");
-          ws.send(JSON.stringify({ type: "initial_alerts", alerts: activeAlerts }));
-          db.close();
-        } catch (dbErr) {
-          console.error("[WebSocket] Failed to read initial alerts from DB:", dbErr);
-        }
+    (async () => {
+      try {
+        const db = await getWritableDb();
+        const activeAlerts = dbAll(db, "SELECT * FROM alerts");
+        ws.send(JSON.stringify({ type: "initial_alerts", alerts: activeAlerts }));
+        db.close();
+      } catch (dbErr) {
+        console.error("[WebSocket] Failed to read initial alerts from DB:", dbErr);
       }
-    });
+    })();
 
     ws.on("message", (msg) => {
       // Stub for client messages if needed

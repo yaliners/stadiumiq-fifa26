@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Accessibility, Shield, Calendar, Users, Award, Settings, User, Heart, X, HelpCircle, MapPin, Mail, Globe, Palette, ShieldAlert, Info, Edit, Check, Eye, EyeOff } from "lucide-react";
+import { Accessibility, Shield, Calendar, Users, Award, Settings, User, Heart, X, HelpCircle, MapPin, Mail, Globe, Palette, ShieldAlert, Info, Edit, Check, Eye, EyeOff, Share2, Clipboard, ExternalLink, Download, Laptop, Smartphone, Tablet } from "lucide-react";
 import { db, auth } from "../lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 
@@ -56,6 +56,9 @@ export function DashboardWrapper({
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showAboutModal, setShowAboutModal] = useState(false);
+  const [showShareHub, setShowShareHub] = useState(false);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [mockupTab, setMockupTab] = useState<"admin" | "organizer" | "staff" | "volunteer" | "fan">("admin");
 
   // Profile Edit fields
   const [isEditing, setIsEditing] = useState(false);
@@ -345,6 +348,17 @@ export function DashboardWrapper({
                   </select>
                 </div>
               </div>
+
+              {/* 2.5 SHARE & PROMO HUB */}
+              <button
+                onClick={() => setShowShareHub(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 hover:border-emerald-400 hover:from-emerald-500/30 hover:to-teal-500/30 text-emerald-400 hover:text-emerald-300 transition-all font-mono text-xs font-bold shrink-0 cursor-pointer shadow-[0_0_10px_rgba(16,185,129,0.1)] hover:shadow-[0_0_15px_rgba(16,185,129,0.25)] hover:scale-102 active:scale-98"
+                title="Open StadiumIQ Share Hub & Media Kit"
+              >
+                <Share2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-[11px]">PROMO HUB</span>
+                <span className="inline sm:hidden text-[11px]">PROMO</span>
+              </button>
 
               {/* 3. PROFILE DROPDOWN */}
               <div className="relative shrink-0">
@@ -1008,6 +1022,372 @@ export function DashboardWrapper({
             >
               Close Info
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 4. STADIUMIQ SHARE HUB & PROMO KIT MODAL */}
+      {showShareHub && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto animate-fadeIn">
+          <div className="w-full max-w-5xl rounded-3xl border border-zinc-800 bg-[#0c0c0e] text-white p-6 sm:p-8 shadow-2xl relative max-h-[90vh] overflow-y-auto flex flex-col gap-6">
+            
+            {/* Close Button */}
+            <button 
+              onClick={() => setShowShareHub(false)}
+              className="absolute top-4 right-4 p-1.5 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Modal Header */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-zinc-800/80 pb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                  <Share2 className="w-6 h-6 text-black" />
+                </div>
+                <div>
+                  <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase flex items-center gap-2">
+                    StadiumIQ <span className="text-emerald-400">Media Kit & Share Hub</span>
+                  </h2>
+                  <p className="text-xs font-mono text-zinc-400 uppercase tracking-widest mt-0.5">PromptWars Challenge 4 Marketing Console</p>
+                </div>
+              </div>
+              
+              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-full px-3 py-1 font-mono text-[10px] text-emerald-400 font-bold uppercase tracking-wider animate-pulse">
+                Ready to Post 🚀
+              </div>
+            </div>
+
+            {/* Main Grid Content */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+              
+              {/* LEFT PANEL (8 cols in LG): SOCIAL POST CREATIVE KIT */}
+              <div className="lg:col-span-7 flex flex-col gap-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-mono uppercase text-emerald-400 tracking-wider">Step 1:</span>
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-zinc-200">Select Your LinkedIn Creative Style</h3>
+                </div>
+
+                {/* Pre-written Posts Generator */}
+                <div className="space-y-4">
+                  {[
+                    {
+                      title: "🎭 Scenario Story (Immersive & Story-driven)",
+                      description: "Guides readers through a high-stakes kickoff scenario showing how StadiumIQ solves crisis pressure in real time.",
+                      text: `Kickoff is in 45 minutes. Estadio Azteca is packed with 87,000 screaming fans. 
+Suddenly, Gate C reports severe bottle-necks, and a major power fluctuation flickers across Zone 4. 
+
+How does a stadium operations team react in real-time? 
+
+Enter StadiumIQ 🏟️ — an intelligent, full-stack, and secure tournament operations console designed for the FIFA World Cup 2026. 
+
+By unifying 5 crucial roles into a single, synchronized hub, StadiumIQ bridges the gap from the high-level organizer to the spectator in Sector 312:
+1. 👑 Master Admin: Full RBAC state synchronization and administrative control logs.
+2. 📢 Operations Organizer: Global emergency broadcasts and live task dispatching.
+3. 👮 Security & Staff: Real-time incident logs and location-aware dispatch routing.
+4. 🙋 Volunteers: Interactive seat guides and digital spectator support.
+5. ⚽ Fans: High-fidelity GPS mapping, wait times, and direct assistance.
+
+No more siloed communication. Pure, low-latency coordination under immense pressure.
+
+Extremely proud of this build for Challenge 4 of PromptWars! Rapid prototyping at its absolute finest. 🚀
+
+Google for Developers Hack2skill
+#BuildWithAI #PromptWarsVirtual #Challenge4 #StadiumIQ #FIFA2026 #ReactJS #FullStack`
+                    },
+                    {
+                      title: "💻 Technical Deep-Dive (Engineer-focused)",
+                      description: "Highlights the technical stack, Express backend architecture, offline SQLite buffers, and Gemini AI guardrails.",
+                      text: `Building for 90,000 concurrent stadium nodes requires real-time precision and a bulletproof, offline-resilient architecture.
+
+For Challenge 4 of PromptWars, I engineered StadiumIQ 🏟️: a robust, full-stack operations and spectator console designed to streamline FIFA World Cup 2026 events.
+
+Under the hood:
+⚡ Full-Stack Real-time Engine: Powered by Express and a highly-optimized in-memory SQLite buffer with automated master synchronization, bypassing network latency.
+🛰️ Location-Aware Dispatching: Seamless integrated GPS calculations to locate closest staff, dispatching responders to incidents dynamically.
+🤖 AI-Derived Guardrails: Integrated Gemini intelligence to monitor telemetry and automatically route advisories. If confidence levels fall below 85%, the system safely routes to human admins for instant override.
+🔔 WebSocket Broadcasts: Instant, live multi-role dashboards (Admin, Organizer, Security, Volunteer, Fan) synchronized in milliseconds.
+
+Rapidly developing this end-to-end flow with high availability and pristine design at the deadline was a thrilling rush!
+
+Google for Developers Hack2skill
+#BuildWithAI #PromptWarsVirtual #Challenge4 #TypeScript #NodeJS #SQLite #RealTimeWeb`
+                    },
+                    {
+                      title: "⚡ Punchy & Impactful (High Readability)",
+                      description: "A fast, clean, and highly readable summary highlighting key pillars instantly. Perfect for maximum click-throughs.",
+                      text: `Challenge 4 of PromptWars is officially complete, and I am proud to showcase StadiumIQ 🏟️!
+
+StadiumIQ is a highly secure, real-time stadium operations and fan engagement console custom-engineered for the upcoming FIFA World Cup 2026. 
+
+By bridging the gap between stadium control, boots-on-the-ground staff, and tens of thousands of fans, StadiumIQ solves real crowd management, incident tracking, and spectator challenges.
+
+Key pillars of the system:
+✅ Secure Multi-Role Architecture: Admin, Organizer, Staff, Volunteer, and Fan portals.
+✅ Full-Stack Persistence: Real-time synchronization of incidents, gates, and alerts.
+✅ Intelligent Routing: Automated responder matching using telemetry and confidence levels.
+
+Nothing beats the thrill of turning high-stakes operational constraints into a polished, production-ready product. 🚀
+
+Google for Developers Hack2skill
+#BuildWithAI #PromptWarsVirtual #Challenge4 #WebDevelopment #ReactJS #ProductDesign`
+                    },
+                    {
+                      title: "🌟 Creator's Pride (Personal Journey)",
+                      description: "Focuses on your experience as a creator rapid prototyping a sophisticated web app under pressure.",
+                      text: `Rapid prototyping is all about turning constraints into masterfully crafted solutions. 🛠️
+
+For Challenge 4 of PromptWars, I set out to build StadiumIQ 🏟️—and it has been one of the most exciting sprints of my developer journey.
+
+We wanted to solve a major issue: the fragmentation of operational data at massive sports events. In just a short cycle, we designed and built an interactive system connecting stadium admins, organizers, volunteers, field security staff, and spectators into one unified loop.
+
+From engineering the Express backend server with low-latency WebSockets, to carving out beautiful, accessible dark-themed client interfaces, every file built was a step toward building a real, practical operations center.
+
+A huge thanks to the community for the inspiration!
+
+Google for Developers Hack2skill
+#BuildWithAI #PromptWarsVirtual #Challenge4 #WebDev #RapidPrototyping #DeveloperStory`
+                    }
+                  ].map((post, idx) => (
+                    <div key={idx} className="border border-zinc-800/80 bg-zinc-900/30 rounded-2xl p-4 hover:border-emerald-500/20 transition-all flex flex-col gap-3">
+                      <div>
+                        <h4 className="font-bold text-sm text-white">{post.title}</h4>
+                        <p className="text-xs text-zinc-400 mt-0.5 leading-relaxed">{post.description}</p>
+                      </div>
+                      
+                      <div className="relative">
+                        <textarea
+                          readOnly
+                          value={post.text}
+                          className="w-full h-32 bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs font-mono text-zinc-300 focus:outline-none focus:border-emerald-500/50 resize-none select-all"
+                        />
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(post.text);
+                            setCopiedIndex(idx);
+                            setTimeout(() => setCopiedIndex(null), 2000);
+                          }}
+                          className="absolute bottom-3 right-3 flex items-center gap-1 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[10px] uppercase font-mono shadow-md transition-all active:scale-95"
+                        >
+                          {copiedIndex === idx ? (
+                            <>
+                              <Check className="w-3 h-3 text-white" />
+                              <span>COPIED!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Clipboard className="w-3 h-3" />
+                              <span>COPY POST</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* RIGHT PANEL (5 cols in LG): ROLE INTERACTIVE MOCKUP STUDIO */}
+              <div className="lg:col-span-5 flex flex-col gap-4 border-l border-zinc-800/80 lg:pl-6">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-xs font-mono uppercase text-emerald-400 tracking-wider">Step 2:</span>
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-zinc-200">Visual Mockup Studio</h3>
+                </div>
+
+                <p className="text-xs text-zinc-400 leading-relaxed">
+                  We render live interactive mini-consoles in pure CSS for you to showcase. Use the tabs below to switch and inspect roles:
+                </p>
+
+                {/* Mockup Persona Tabs */}
+                <div className="grid grid-cols-5 gap-1 bg-zinc-950 p-1 border border-zinc-800 rounded-lg">
+                  {(["admin", "organizer", "staff", "volunteer", "fan"] as const).map((roleKey) => (
+                    <button
+                      key={roleKey}
+                      onClick={() => setMockupTab(roleKey)}
+                      className={`py-1 text-[10px] font-mono font-bold rounded uppercase transition-all ${
+                        mockupTab === roleKey
+                          ? roleKey === "admin"
+                            ? "bg-rose-500 text-black shadow-md"
+                            : roleKey === "organizer"
+                              ? "bg-[#a855f7] text-black shadow-md"
+                              : roleKey === "staff"
+                                ? "bg-[#22c55e] text-black shadow-md"
+                                : roleKey === "volunteer"
+                                  ? "bg-[#06b6d4] text-black shadow-md"
+                                  : "bg-[#f59e0b] text-black shadow-md"
+                          : "text-zinc-500 hover:text-zinc-300"
+                      }`}
+                    >
+                      {roleKey}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Simulated High-Fi Device Monitor / Frame */}
+                <div className="bg-[#141416] border border-zinc-800 rounded-2xl p-4 shadow-inner relative flex flex-col gap-4">
+                  
+                  {/* Outer Frame Chrome Bar */}
+                  <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2 mb-1 text-[9px] font-mono text-zinc-500">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2.5 h-2.5 rounded-full bg-red-500/40"></div>
+                      <div className="w-2.5 h-2.5 rounded-full bg-amber-500/40"></div>
+                      <div className="w-2.5 h-2.5 rounded-full bg-green-500/40"></div>
+                    </div>
+                    <span className="uppercase text-[8px] bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800/60 font-black">
+                      {mockupTab === "admin" ? "🖥️ DESKTOP VIEW" : mockupTab === "organizer" ? "🖥️ OPERATIONS DESK" : "📱 HANDHELD DEVICE"}
+                    </span>
+                    <span className="opacity-60">10:45 AM UTC</span>
+                  </div>
+
+                  {/* HTML/CSS Screen Mockups */}
+                  {mockupTab === "admin" && (
+                    <div className="bg-[#09090b] border border-rose-500/30 rounded-xl p-4 font-mono text-[11px] text-zinc-300 shadow-lg">
+                      <div className="flex justify-between items-center border-b border-zinc-800 pb-2 mb-2">
+                        <span className="text-rose-400 font-bold flex items-center gap-1">👑 StadiumIQ Admin Control</span>
+                        <span className="text-[8px] bg-rose-500/10 text-rose-300 px-1.5 py-0.5 rounded uppercase font-bold">RBAC Active</span>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between"><span className="text-zinc-500">Master DB Sync:</span><span className="text-emerald-400 font-bold">Synchronized</span></div>
+                        <div className="flex justify-between"><span className="text-zinc-500">Guardrail Engine:</span><span className="text-emerald-400 font-bold">98.2% Safe</span></div>
+                        <div className="flex justify-between"><span className="text-zinc-500">Active Roles Logged:</span><span className="text-zinc-100 font-bold">5 Portals Live</span></div>
+                        <div className="flex justify-between"><span className="text-zinc-500">Fallback Routing:</span><span className="text-zinc-100">&lt; 85% Auto-triage</span></div>
+                      </div>
+                      <div className="mt-3 pt-2 border-t border-zinc-800/80 text-[10px] space-y-1">
+                        <div className="text-zinc-500 font-bold">System Actions History:</div>
+                        <div className="text-zinc-400 truncate">● Admin updated security gate telemetry - 10:40 AM</div>
+                        <div className="text-zinc-400 truncate">● System auto-sync backup written back - 10:15 AM</div>
+                      </div>
+                    </div>
+                  )}
+
+                  {mockupTab === "organizer" && (
+                    <div className="bg-[#09090b] border border-[#a855f7]/30 rounded-xl p-4 font-mono text-[11px] text-zinc-300 shadow-lg">
+                      <div className="flex justify-between items-center border-b border-zinc-800 pb-2 mb-2">
+                        <span className="text-[#c084fc] font-bold flex items-center gap-1">📢 Operations Organizer Hub</span>
+                        <span className="text-[8px] bg-[#a855f7]/10 text-[#c084fc] px-1.5 py-0.5 rounded uppercase font-bold">Broadcaster</span>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="bg-zinc-950 p-2 border border-zinc-800 rounded text-zinc-400 text-[10px] leading-relaxed">
+                          <div className="text-[#c084fc] font-black mb-1">🚨 Quick Broadcast Preset #1</div>
+                          "Security Alert: Gate A is currently bottlenecked. Fans please reroute to Gate B."
+                        </div>
+                        <div className="grid grid-cols-2 gap-1 text-[9px] text-center font-bold">
+                          <div className="bg-[#18181b] p-1.5 border border-zinc-800 rounded text-[#c084fc]">Weather: Clear</div>
+                          <div className="bg-[#18181b] p-1.5 border border-zinc-800 rounded text-emerald-400">WS Live Feed</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {mockupTab === "staff" && (
+                    <div className="bg-[#09090b] border border-emerald-500/30 rounded-xl p-4 font-mono text-[11px] text-zinc-300 shadow-lg">
+                      <div className="flex justify-between items-center border-b border-zinc-800 pb-2 mb-2">
+                        <span className="text-[#4ade80] font-bold flex items-center gap-1">👮 Security & Staff Patrol</span>
+                        <span className="text-[8px] bg-emerald-500/10 text-[#4ade80] px-1.5 py-0.5 rounded uppercase font-bold">Patrol</span>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="bg-rose-950/40 border border-rose-500/20 p-2.5 rounded text-[10px] space-y-1">
+                          <div className="flex justify-between text-rose-400 font-bold"><span>🚨 Medical Event</span><span className="animate-pulse">● HIGH PRIO</span></div>
+                          <div className="text-zinc-300">Spectator collapsed near Section 102. Responders routed.</div>
+                        </div>
+                        <div className="bg-zinc-950 p-1.5 border border-zinc-800 rounded text-[9px] flex justify-between items-center text-zinc-400">
+                          <span>Nearest Officer: John</span>
+                          <span className="text-emerald-400 font-bold">Sector 2</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {mockupTab === "volunteer" && (
+                    <div className="bg-[#09090b] border border-cyan-500/30 rounded-xl p-4 font-mono text-[11px] text-zinc-300 shadow-lg">
+                      <div className="flex justify-between items-center border-b border-zinc-800 pb-2 mb-2">
+                        <span className="text-cyan-400 font-bold flex items-center gap-1">🙋 Volunteer Concierge</span>
+                        <span className="text-[8px] bg-cyan-500/10 text-cyan-400 px-1.5 py-0.5 rounded uppercase font-bold">Support</span>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="grid grid-cols-4 gap-1 p-1 bg-zinc-950 border border-zinc-800 rounded text-center text-[8px] font-bold text-zinc-500">
+                          <div className="bg-cyan-500/20 border border-cyan-500/40 p-1 rounded text-cyan-300">102A</div>
+                          <div className="bg-zinc-900 border border-zinc-800 p-1 rounded">102B</div>
+                          <div className="bg-cyan-500/20 border border-cyan-500/40 p-1 rounded text-cyan-300">102C</div>
+                          <div className="bg-zinc-900 border border-zinc-800 p-1 rounded">102D</div>
+                        </div>
+                        <p className="text-[9px] text-zinc-400 leading-tight">Instant lookup of seating coordinates, ADA accessibility entrances, and custom checklist routines.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {mockupTab === "fan" && (
+                    <div className="bg-[#09090b] border border-amber-500/30 rounded-xl p-4 font-mono text-[11px] text-zinc-300 shadow-lg">
+                      <div className="flex justify-between items-center border-b border-zinc-800 pb-2 mb-2">
+                        <span className="text-amber-400 font-bold flex items-center gap-1">⚽ Fan Stadium Companion</span>
+                        <span className="text-[8px] bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded uppercase font-bold">Fan Portal</span>
+                      </div>
+                      <div className="space-y-1.5">
+                        <div className="bg-zinc-950 p-2 border border-zinc-800 rounded flex justify-between items-center text-[10px]">
+                          <span>🍔 Concession Line Wait:</span>
+                          <span className="text-emerald-400 font-bold">~5 Mins</span>
+                        </div>
+                        <div className="bg-zinc-950 p-2 border border-zinc-800 rounded flex justify-between items-center text-[10px]">
+                          <span>🚪 Gate Flow Status:</span>
+                          <span className="text-emerald-400 font-bold">Optimized</span>
+                        </div>
+                        <div className="bg-zinc-950 p-2 border border-zinc-800 rounded flex justify-between items-center text-[10px]">
+                          <span>📍 Smart GPS Seating Map:</span>
+                          <span className="text-amber-400 font-bold">Active</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Informational Guidelines on taking high-res screenshot */}
+                  <div className="bg-[#1c1c1e] border border-zinc-800/80 rounded-xl p-3 flex flex-col gap-2">
+                    <h5 className="text-[11px] font-mono font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <ExternalLink className="w-3.5 h-3.5 text-emerald-400" />
+                      How to capture your live visuals
+                    </h5>
+                    <ul className="space-y-1 text-[10px] text-zinc-400 leading-relaxed list-disc list-inside">
+                      <li>
+                        Toggle the **Role Selector** in the main header bar to switch personas.
+                      </li>
+                      <li>
+                        Navigate to the actual live page and use <kbd className="px-1 bg-zinc-900 border border-zinc-800 rounded text-zinc-300 font-mono text-[9px]">Cmd+Shift+4</kbd> (Mac) or <kbd className="px-1 bg-zinc-900 border border-zinc-800 rounded text-zinc-300 font-mono text-[9px]">Win+Shift+S</kbd> (Windows) to crop a gorgeous screenshot.
+                      </li>
+                      <li>
+                        Since you are running the live, high-resolution web app, your captured screenshots will be incredibly crisp and professional!
+                      </li>
+                    </ul>
+                  </div>
+
+                </div>
+
+                {/* Viral Marketing Bonus Tip */}
+                <div className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20 rounded-xl p-3 flex items-start gap-2.5">
+                  <div className="p-1 rounded bg-emerald-500/20 text-emerald-400 shrink-0 mt-0.5">
+                    <Award className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-emerald-400 font-mono uppercase tracking-wide">Pro-Marketing Tip</h5>
+                    <p className="text-[10px] text-zinc-300 leading-relaxed mt-0.5">
+                      Pairing a high-resolution screenshot of the **Admin Page** alongside your **Security & Fan** mobile mockups on LinkedIn shows off the extreme full-stack capability of your StadiumIQ build, making it highly competitive for PromptWars judges!
+                    </p>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="border-t border-zinc-800/80 pt-5 flex items-center justify-between gap-4">
+              <span className="text-[10px] font-mono text-zinc-500 uppercase">StadiumIQ Hackathon Social Kit — Ready for LinkedIn</span>
+              <button 
+                onClick={() => setShowShareHub(false)}
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold rounded-xl transition-all shadow-lg text-sm uppercase font-mono"
+              >
+                Close Share Hub
+              </button>
+            </div>
+
           </div>
         </div>
       )}

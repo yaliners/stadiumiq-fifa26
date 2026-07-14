@@ -10,6 +10,13 @@ interface AuthScreenProps {
 }
 
 export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
+  // Direct, instant top-level redirection on mount to ensure no intermediate redirect warnings are shown
+  useEffect(() => {
+    if (window.location.hostname === "stadiumiq-operations-center.ai.studio") {
+      window.location.href = `https://stadiumiq-operations-center-646746347637.us-west1.run.app${window.location.search || ""}`;
+    }
+  }, []);
+
   const [step, setStep] = useState<"welcome" | "roles" | "login">("welcome");
   const [role, setRole] = useState<"staff" | "organizer" | "volunteer" | "fan" | "admin" | null>(null);
   const [error, setError] = useState("");

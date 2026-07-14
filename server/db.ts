@@ -5,6 +5,7 @@ import { seedDatabase } from "./seed";
 
 const dbPath = path.resolve(process.cwd(), "stadium_ops.db");
 
+let masterBuffer: Buffer | null = null;
 let SQLInstance: any = null;
 
 export async function getSQL(): Promise<any> {
@@ -20,48 +21,57 @@ export async function getSQL(): Promise<any> {
  */
 export async function getReadOnlyDb(): Promise<any> {
   const SQL = await getSQL();
-  let fileBuffer: Buffer;
-  let isNewOrCorrupt = false;
-  if (fs.existsSync(dbPath)) {
-    try {
-      fileBuffer = fs.readFileSync(dbPath);
-      const testDb = new SQL.Database(fileBuffer);
-      // Run a simple test statement to verify health
-      testDb.run("SELECT 1;");
-      
-      // Verify if required tables are present
-      const tableCheck = testDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='stadiums';");
-      const hasStadiums = tableCheck.step();
-      tableCheck.free();
-      if (!hasStadiums) {
-        throw new Error("Missing 'stadiums' table, database requires seeding.");
-      }
-      return testDb;
-    } catch (e) {
-      console.error("Database file exists but is malformed/corrupt or unseeded. Resetting it.", e);
+  
+  if (masterBuffer === null) {
+    let fileBuffer: Buffer = Buffer.alloc(0);
+    let isNewOrCorrupt = false;
+    
+    if (fs.existsSync(dbPath)) {
       try {
-        fs.unlinkSync(dbPath);
-      } catch (err) {}
-      fileBuffer = Buffer.alloc(0);
+        fileBuffer = fs.readFileSync(dbPath);
+        const testDb = new SQL.Database(fileBuffer);
+        // Run a simple test statement to verify health
+        testDb.run("SELECT 1;");
+        
+        // Verify if required tables are present
+        const tableCheck = testDb.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='stadiums';");
+        const hasStadiums = tableCheck.step();
+        tableCheck.free();
+        testDb.close();
+        
+        if (!hasStadiums) {
+          throw new Error("Missing 'stadiums' table, database requires seeding.");
+        }
+        masterBuffer = fileBuffer;
+      } catch (e) {
+        console.error("Database file exists but is malformed/corrupt or unseeded. Resetting it.", e);
+        try {
+          fs.unlinkSync(dbPath);
+        } catch (err) {}
+        masterBuffer = Buffer.alloc(0);
+        isNewOrCorrupt = true;
+      }
+    } else {
+      masterBuffer = Buffer.alloc(0);
       isNewOrCorrupt = true;
     }
-  } else {
-    fileBuffer = Buffer.alloc(0);
-    isNewOrCorrupt = true;
-  }
 
-  if (isNewOrCorrupt && process.env.SEEDING !== "true") {
-    try {
-      console.log("[db] Database is empty, missing tables, or corrupt. Seeding programmatically...");
-      const db = new SQL.Database();
-      await seedDatabase(db);
-      saveDb(db);
-      return db;
-    } catch (seedErr) {
-      console.error("[db] Failed to seed database dynamically:", seedErr);
+    if (isNewOrCorrupt && process.env.SEEDING !== "true") {
+      try {
+        console.log("[db] Database is empty, missing tables, or corrupt. Seeding programmatically...");
+        const db = new SQL.Database();
+        await seedDatabase(db);
+        const data = db.export();
+        masterBuffer = Buffer.from(data);
+        fs.writeFileSync(dbPath, masterBuffer);
+        db.close();
+      } catch (seedErr) {
+        console.error("[db] Failed to seed database dynamically:", seedErr);
+      }
     }
   }
-  return new SQL.Database(fileBuffer);
+
+  return new SQL.Database(masterBuffer);
 }
 
 /**
@@ -77,7 +87,12 @@ export async function getWritableDb(): Promise<any> {
 export function saveDb(db: any): void {
   const data = db.export();
   const buffer = Buffer.from(data);
-  fs.writeFileSync(dbPath, buffer);
+  masterBuffer = buffer;
+  try {
+    fs.writeFileSync(dbPath, buffer);
+  } catch (err) {
+    console.error("Failed to write database back to disk:", err);
+  }
 }
 
 /**
