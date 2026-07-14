@@ -13,14 +13,23 @@ import { getWritableDb, dbRun, saveDb } from "./db";
 
 const router = express.Router();
 
+// Define typed interface for chat responses
+export interface ChatResponse {
+  answer: string;
+  confidence: "grounded" | "uncertain" | "general_knowledge" | string;
+  source_type: "gemini" | "decision_engine" | "fallback" | "timeout" | string;
+  model_tier?: string;
+  safety_blocked?: boolean;
+}
+
 // Simple in-memory TTL cache (30s)
 interface CacheEntry {
-  response: any;
+  response: ChatResponse;
   expiry: number;
 }
 const queryCache = new Map<string, CacheEntry>();
 
-function getCache(message: string, locale: string, persona?: string): any | null {
+function getCache(message: string, locale: string, persona?: string): ChatResponse | null {
   const key = `${locale}:${persona || "staff"}:${message.trim().toLowerCase()}`;
   const entry = queryCache.get(key);
   if (entry && entry.expiry > Date.now()) {
@@ -29,7 +38,7 @@ function getCache(message: string, locale: string, persona?: string): any | null
   return null;
 }
 
-function setCache(message: string, locale: string, response: any, persona?: string): void {
+function setCache(message: string, locale: string, response: ChatResponse, persona?: string): void {
   const key = `${locale}:${persona || "staff"}:${message.trim().toLowerCase()}`;
   queryCache.set(key, {
     response,
@@ -40,7 +49,7 @@ function setCache(message: string, locale: string, response: any, persona?: stri
 /**
  * Pydantic-like input validation & sanitization
  */
-function cleanInput(msg: any, loc: any) {
+function cleanInput(msg: unknown, loc: unknown): { message: string; locale: string } {
   // Strip HTML
   let cleanedMessage = String(msg || "").replace(/<[^>]*>/g, "");
   // Cap length at 500 characters (truncate, do not reject)

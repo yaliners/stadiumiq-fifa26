@@ -58,7 +58,7 @@ async function answerSchedule(message: string, locale: string): Promise<string> 
 
   const result = await safeDbQuery(async (db) => {
     let query = "SELECT m.*, s.name as stadium_name FROM matches m JOIN stadiums s ON m.stadium_id = s.id";
-    let params: any[] = [];
+    let params: (string | number | boolean | null)[] = [];
     if (queryTeams.length > 0) {
       const conditions = queryTeams.map(() => "(m.home_team LIKE ? OR m.away_team LIKE ?)").join(" OR ");
       query += ` WHERE ${conditions} ORDER BY m.datetime_utc ASC LIMIT 4`;
@@ -207,7 +207,7 @@ async function answerFacility(message: string, locale: string): Promise<string> 
 
   const result = await safeDbQuery(async (db) => {
     let query = "SELECT DISTINCT f.id, f.stadium_id, f.type, f.description, f.lat, f.lng, s.name as stadium_name FROM facilities f JOIN stadiums s ON f.stadium_id = s.id WHERE f.type = ?";
-    const params: any[] = [type];
+    const params: (string | number | boolean | null)[] = [type];
     if (stadiumKeyword) {
       query += " AND f.stadium_id = ?";
       params.push(stadiumKeyword);

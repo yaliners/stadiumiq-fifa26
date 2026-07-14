@@ -6,9 +6,9 @@ import { seedDatabase } from "./seed";
 const dbPath = path.resolve(process.cwd(), "stadium_ops.db");
 
 let masterBuffer: Buffer | null = null;
-let SQLInstance: any = null;
+let SQLInstance: initSqlJs.SqlJsStatic | null = null;
 
-export async function getSQL(): Promise<any> {
+export async function getSQL(): Promise<initSqlJs.SqlJsStatic> {
   if (!SQLInstance) {
     // Note: Node environment loads the wasm file automatically or we can initialize
     SQLInstance = await initSqlJs();
@@ -19,7 +19,7 @@ export async function getSQL(): Promise<any> {
 /**
  * Returns a SQLite Database instance loaded from the binary file on disk.
  */
-export async function getReadOnlyDb(): Promise<any> {
+export async function getReadOnlyDb(): Promise<initSqlJs.Database> {
   const SQL = await getSQL();
   
   if (masterBuffer === null) {
@@ -77,14 +77,14 @@ export async function getReadOnlyDb(): Promise<any> {
 /**
  * Same as read-only, but returned for writable/seeding operations.
  */
-export async function getWritableDb(): Promise<any> {
+export async function getWritableDb(): Promise<initSqlJs.Database> {
   return getReadOnlyDb();
 }
 
 /**
  * Saves a SQLite Database instance back to the binary file on disk.
  */
-export function saveDb(db: any): void {
+export function saveDb(db: initSqlJs.Database): void {
   const data = db.export();
   const buffer = Buffer.from(data);
   masterBuffer = buffer;
@@ -98,9 +98,9 @@ export function saveDb(db: any): void {
 /**
  * Helper to query all rows from a statement.
  */
-export function dbAll(db: any, sql: string, params: any[] = []): any[] {
+export function dbAll(db: initSqlJs.Database, sql: string, params: (string | number | boolean | null)[] = []): any[] {
   const stmt = db.prepare(sql);
-  stmt.bind(params);
+  stmt.bind(params as any);
   const rows: any[] = [];
   while (stmt.step()) {
     rows.push(stmt.getAsObject());
@@ -112,9 +112,9 @@ export function dbAll(db: any, sql: string, params: any[] = []): any[] {
 /**
  * Helper to query a single row from a statement.
  */
-export function dbGet(db: any, sql: string, params: any[] = []): any {
+export function dbGet(db: initSqlJs.Database, sql: string, params: (string | number | boolean | null)[] = []): any {
   const stmt = db.prepare(sql);
-  stmt.bind(params);
+  stmt.bind(params as any);
   let row: any = null;
   if (stmt.step()) {
     row = stmt.getAsObject();
@@ -126,8 +126,8 @@ export function dbGet(db: any, sql: string, params: any[] = []): any {
 /**
  * Helper to execute a query statement (inserts/updates/tables).
  */
-export function dbRun(db: any, sql: string, params: any[] = []): void {
-  db.run(sql, params);
+export function dbRun(db: initSqlJs.Database, sql: string, params: (string | number | boolean | null)[] = []): void {
+  db.run(sql, params as any);
 }
 
 /**
@@ -135,9 +135,9 @@ export function dbRun(db: any, sql: string, params: any[] = []): void {
  * It loads the database from disk, executes the query function, and closes the database.
  */
 export async function safeDbQuery<T>(
-  queryFn: (db: any) => T
+  queryFn: (db: initSqlJs.Database) => T
 ): Promise<T | null> {
-  let db: any = null;
+  let db: initSqlJs.Database | null = null;
   try {
     db = await getReadOnlyDb();
     const result = queryFn(db);

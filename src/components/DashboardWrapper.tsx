@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Accessibility, Shield, Calendar, Users, Award, Settings, User, Heart, X, HelpCircle, MapPin, Mail, Globe, Palette, ShieldAlert, Info, Edit, Check, Eye, EyeOff, Share2, Clipboard, ExternalLink, Download, Laptop, Smartphone, Tablet } from "lucide-react";
 import { db, auth } from "../lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
+import { upcomingMatches } from "../data/matches";
 
 interface DashboardWrapperProps {
   locale: "en" | "es" | "fr" | "de" | "pt" | "it";
@@ -59,6 +60,62 @@ export function DashboardWrapper({
   const [showShareHub, setShowShareHub] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   const [mockupTab, setMockupTab] = useState<"admin" | "organizer" | "staff" | "volunteer" | "fan">("admin");
+
+  // Filter upcoming matches to only include live (within 2.5 hours of start time) or future ones
+  const liveAndUpcomingMatches = upcomingMatches.filter(m => {
+    const matchTime = new Date(`${m.date} ${m.time}`).getTime();
+    const conclusionTime = matchTime + 2.5 * 60 * 60 * 1000;
+    return Date.now() < conclusionTime;
+  });
+
+  // Promo Hub live match countdown state
+  const [promoMatchId, setPromoMatchId] = useState<string>(() => {
+    const validMatches = upcomingMatches.filter(m => {
+      const matchTime = new Date(`${m.date} ${m.time}`).getTime();
+      const conclusionTime = matchTime + 2.5 * 60 * 60 * 1000;
+      return Date.now() < conclusionTime;
+    });
+    return validMatches[0]?.id || "u2";
+  });
+  const [countdownText, setCountdownText] = useState<string>("Initializing...");
+
+  useEffect(() => {
+    const updateCountdown = () => {
+      const match = upcomingMatches.find(m => m.id === promoMatchId);
+      if (!match) {
+        setCountdownText("N/A");
+        return;
+      }
+      
+      const matchDateTimeStr = `${match.date} ${match.time}`;
+      const matchTime = new Date(matchDateTimeStr).getTime();
+      const now = Date.now();
+      const diff = matchTime - now;
+
+      if (diff <= 0) {
+        const conclusionTime = matchTime + 2.5 * 60 * 60 * 1000;
+        if (now < conclusionTime) {
+          setCountdownText("LIVE NOW ⚽");
+        } else {
+          setCountdownText("Concluded 🏁");
+        }
+      } else {
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        
+        const hStr = String(hours).padStart(2, "0");
+        const mStr = String(minutes).padStart(2, "0");
+        const sStr = String(seconds).padStart(2, "0");
+        
+        setCountdownText(`${hStr}h : ${mStr}m : ${sStr}s`);
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [promoMatchId]);
 
   // Profile Edit fields
   const [isEditing, setIsEditing] = useState(false);
@@ -351,6 +408,7 @@ export function DashboardWrapper({
 
               {/* 2.5 SHARE & PROMO HUB */}
               <button
+                id="promo-hub-trigger"
                 onClick={() => setShowShareHub(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 hover:border-emerald-400 hover:from-emerald-500/30 hover:to-teal-500/30 text-emerald-400 hover:text-emerald-300 transition-all font-mono text-xs font-bold shrink-0 cursor-pointer shadow-[0_0_10px_rgba(16,185,129,0.1)] hover:shadow-[0_0_15px_rgba(16,185,129,0.25)] hover:scale-102 active:scale-98"
                 title="Open StadiumIQ Share Hub & Media Kit"
@@ -1033,6 +1091,7 @@ export function DashboardWrapper({
             
             {/* Close Button */}
             <button 
+              id="share-hub-close-top"
               onClick={() => setShowShareHub(false)}
               className="absolute top-4 right-4 p-1.5 rounded-full bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 hover:text-white transition-colors"
             >
@@ -1047,14 +1106,52 @@ export function DashboardWrapper({
                 </div>
                 <div>
                   <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase flex items-center gap-2">
-                    StadiumIQ <span className="text-emerald-400">Media Kit & Share Hub</span>
+                    StadiumIQ <span className="text-emerald-400">Matchday Promo Hub</span>
                   </h2>
-                  <p className="text-xs font-mono text-zinc-400 uppercase tracking-widest mt-0.5">PromptWars Challenge 4 Marketing Console</p>
+                  <p className="text-xs font-mono text-zinc-400 uppercase tracking-widest mt-0.5">FIFA World Cup 2026 Matchday Hub & Broadcast Console</p>
                 </div>
               </div>
               
               <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-full px-3 py-1 font-mono text-[10px] text-emerald-400 font-bold uppercase tracking-wider animate-pulse">
-                Ready to Post 🚀
+                Live Match Operations 🚀
+              </div>
+            </div>
+
+            {/* Interactive Match Countdown Dashboard */}
+            <div className="bg-[#141416] border border-zinc-800/80 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-lg">
+              <div className="flex flex-col gap-1.5 w-full md:w-auto">
+                <span className="text-[10px] font-mono uppercase text-emerald-400 tracking-widest font-bold">⚽ Matchday Live Operations Countdown</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-zinc-400">Target Match:</span>
+                  <select 
+                    value={promoMatchId} 
+                    onChange={(e) => setPromoMatchId(e.target.value)}
+                    className="bg-zinc-900 border border-zinc-800 rounded px-2.5 py-1 text-xs text-emerald-300 font-mono font-bold focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    {liveAndUpcomingMatches.map(m => (
+                      <option key={m.id} value={m.id}>{m.teams} ({m.venue})</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4 bg-zinc-950 px-5 py-3 border border-zinc-800 rounded-xl w-full md:w-auto justify-center md:justify-start">
+                <div className="flex flex-col items-center">
+                  <span className="text-[9px] font-mono text-zinc-500 uppercase tracking-wider">Operational T-Minus</span>
+                  <div className="text-xl sm:text-2xl font-mono font-black text-emerald-400 tracking-wider drop-shadow-[0_0_10px_rgba(52,211,153,0.2)] animate-pulse">
+                    {countdownText}
+                  </div>
+                </div>
+                <div className="h-8 w-px bg-zinc-800" />
+                <div className="flex flex-col">
+                  <span className="text-[9px] font-mono text-zinc-400 uppercase font-bold">Stadium:</span>
+                  <span className="text-xs text-zinc-200 font-mono">
+                    {(liveAndUpcomingMatches.find(m => m.id === promoMatchId) || upcomingMatches.find(m => m.id === promoMatchId))?.venue || "N/A"}
+                  </span>
+                  <span className="text-[9px] text-zinc-500 font-mono">
+                    {(liveAndUpcomingMatches.find(m => m.id === promoMatchId) || upcomingMatches.find(m => m.id === promoMatchId))?.date} @ {(liveAndUpcomingMatches.find(m => m.id === promoMatchId) || upcomingMatches.find(m => m.id === promoMatchId))?.time} UTC
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -1065,91 +1162,81 @@ export function DashboardWrapper({
               <div className="lg:col-span-7 flex flex-col gap-4">
                 <div className="flex items-center gap-2 mb-1">
                   <span className="text-xs font-mono uppercase text-emerald-400 tracking-wider">Step 1:</span>
-                  <h3 className="text-sm font-bold uppercase tracking-wide text-zinc-200">Select Your LinkedIn Creative Style</h3>
+                  <h3 className="text-sm font-bold uppercase tracking-wide text-zinc-200">Share Your Tournament Story</h3>
                 </div>
 
                 {/* Pre-written Posts Generator */}
                 <div className="space-y-4">
                   {[
                     {
-                      title: "🎭 Scenario Story (Immersive & Story-driven)",
-                      description: "Guides readers through a high-stakes kickoff scenario showing how StadiumIQ solves crisis pressure in real time.",
-                      text: `Kickoff is in 45 minutes. Estadio Azteca is packed with 87,000 screaming fans. 
-Suddenly, Gate C reports severe bottle-necks, and a major power fluctuation flickers across Zone 4. 
+                      title: "🎭 Scenario Story (High-Stakes Preparations)",
+                      description: "Guides readers through a kickoff scenario showing how StadiumIQ coordinates complex roles and live operations.",
+                      text: `The gates open in exactly 2 hours. Over 80,000 passionate football fans are descending upon the stadium. 
 
-How does a stadium operations team react in real-time? 
+How does an elite tournament operations team coordinate stadium security, 300+ ground volunteers, facility responders, and thousands of concurrent fans in real-time? 
 
-Enter StadiumIQ 🏟️ — an intelligent, full-stack, and secure tournament operations console designed for the FIFA World Cup 2026. 
+Enter StadiumIQ 🏟️ — the unified Tournament Operations & Companion Center custom-designed to optimize high-stakes matches during the FIFA World Cup 2026.
 
-By unifying 5 crucial roles into a single, synchronized hub, StadiumIQ bridges the gap from the high-level organizer to the spectator in Sector 312:
-1. 👑 Master Admin: Full RBAC state synchronization and administrative control logs.
-2. 📢 Operations Organizer: Global emergency broadcasts and live task dispatching.
-3. 👮 Security & Staff: Real-time incident logs and location-aware dispatch routing.
-4. 🙋 Volunteers: Interactive seat guides and digital spectator support.
-5. ⚽ Fans: High-fidelity GPS mapping, wait times, and direct assistance.
+By synchronizing five key roles, StadiumIQ transforms live event management under immense pressure:
+1. 👑 Control Admins: Multi-user state synchronization and full audit logs.
+2. 📢 Operations Organizers: Instantly broadcast emergency routing and dispatch responders.
+3. 👮 Field Security: Real-time incident logging and location-aware dispatch routing.
+4. 🙋 Volunteer Concierge: Digital seat finders, ADA compliance, and dynamic support checklists.
+5. ⚽ Fan Companion: Real-time concession queue wait times, active gate status, and direct assistant hotlines.
 
-No more siloed communication. Pure, low-latency coordination under immense pressure.
+From kickoff countdowns to live crowd control overlays, StadiumIQ ensures the focus remains where it belongs: the beautiful game. 🚀
 
-Extremely proud of this build for Challenge 4 of PromptWars! Rapid prototyping at its absolute finest. 🚀
-
-Google for Developers Hack2skill
-#BuildWithAI #PromptWarsVirtual #Challenge4 #StadiumIQ #FIFA2026 #ReactJS #FullStack`
+#StadiumIQ #FIFAWorldCup #MatchdayOperations #SportsTech #ReactJS #FullStack`
                     },
                     {
-                      title: "💻 Technical Deep-Dive (Engineer-focused)",
-                      description: "Highlights the technical stack, Express backend architecture, offline SQLite buffers, and Gemini AI guardrails.",
-                      text: `Building for 90,000 concurrent stadium nodes requires real-time precision and a bulletproof, offline-resilient architecture.
+                      title: "💻 Technical Deep-Dive (Tournament Technology Stack)",
+                      description: "Highlights the high-availability technical stack, offline-capable databases, and smart dispatch algorithms.",
+                      text: `When 90,000 spectators connect to stadium networks, latency and intermittent connectivity can break traditional operations.
 
-For Challenge 4 of PromptWars, I engineered StadiumIQ 🏟️: a robust, full-stack operations and spectator console designed to streamline FIFA World Cup 2026 events.
+That's why we engineered StadiumIQ 🏟️ with a resilient, full-stack, offline-capable architecture optimized for high-density tournament environments:
 
-Under the hood:
-⚡ Full-Stack Real-time Engine: Powered by Express and a highly-optimized in-memory SQLite buffer with automated master synchronization, bypassing network latency.
-🛰️ Location-Aware Dispatching: Seamless integrated GPS calculations to locate closest staff, dispatching responders to incidents dynamically.
-🤖 AI-Derived Guardrails: Integrated Gemini intelligence to monitor telemetry and automatically route advisories. If confidence levels fall below 85%, the system safely routes to human admins for instant override.
-🔔 WebSocket Broadcasts: Instant, live multi-role dashboards (Admin, Organizer, Security, Volunteer, Fan) synchronized in milliseconds.
+⚡ Low-Latency Backend: Powered by Express and an optimized, in-memory SQLite buffer with automatic synchronization backends.
+🛰️ Real-Time Telemetry: Live gate throughput tracking and location-aware dispatch routing to match closest officers to crowd-control events.
+🤖 AI-Derived Safety Guardrails: Integrated Gemini models to parse spectator and staff feedback. If AI confidence drops below 85%, the system automatically flags the incident to human command for immediate override.
+📱 Multi-Device Ready: Seamlessly scales from desktop control centers to field staff hand-held terminals and consumer mobile companion apps.
 
-Rapidly developing this end-to-end flow with high availability and pristine design at the deadline was a thrilling rush!
+The result? A secure, zero-overhead stadium command center built to survive the stress of World Cup matchdays. ⚽
 
-Google for Developers Hack2skill
-#BuildWithAI #PromptWarsVirtual #Challenge4 #TypeScript #NodeJS #SQLite #RealTimeWeb`
+#SoftwareEngineering #SportsAnalytics #WebDevelopment #RealTimeApplications #NodeJS`
                     },
                     {
-                      title: "⚡ Punchy & Impactful (High Readability)",
-                      description: "A fast, clean, and highly readable summary highlighting key pillars instantly. Perfect for maximum click-throughs.",
-                      text: `Challenge 4 of PromptWars is officially complete, and I am proud to showcase StadiumIQ 🏟️!
+                      title: "⚡ Fan First Design (Aesthetic & Features)",
+                      description: "A fast, clean, and highly readable summary highlighting fan-focused features and event operations.",
+                      text: `A world-class tournament isn't just about what happens on the pitch — it’s about the spectator's journey from the parking lot to their seat.
 
-StadiumIQ is a highly secure, real-time stadium operations and fan engagement console custom-engineered for the upcoming FIFA World Cup 2026. 
+StadiumIQ 🏟️ bridges the gap between stadium operations and the fan in Sector 102:
 
-By bridging the gap between stadium control, boots-on-the-ground staff, and tens of thousands of fans, StadiumIQ solves real crowd management, incident tracking, and spectator challenges.
+🍔 Smart Concession Tracking: Aggregated fan telemetry reports live wait times so spectators can grab food and return without missing a goal.
+🚪 Gate Flow Optimization: Real-time queue algorithms detect bottlenecks at Gate C and recommend dynamic redirects through the app.
+🙋 Ground Volunteer Enablement: Equips volunteers with digital assistance checklists and real-time incident reporting directly to security.
+🔒 Role-Based Access Control: Absolute data security, ensuring fan privacy while maintaining administrative oversight.
 
-Key pillars of the system:
-✅ Secure Multi-Role Architecture: Admin, Organizer, Staff, Volunteer, and Fan portals.
-✅ Full-Stack Persistence: Real-time synchronization of incidents, gates, and alerts.
-✅ Intelligent Routing: Automated responder matching using telemetry and confidence levels.
+Ready to level up event management? Let's build the future of sports venues together. ⚽
 
-Nothing beats the thrill of turning high-stakes operational constraints into a polished, production-ready product. 🚀
-
-Google for Developers Hack2skill
-#BuildWithAI #PromptWarsVirtual #Challenge4 #WebDevelopment #ReactJS #ProductDesign`
+#FanExperience #TournamentManagement #StadiumOperations #ProductDesign #TailwindCSS`
                     },
                     {
-                      title: "🌟 Creator's Pride (Personal Journey)",
-                      description: "Focuses on your experience as a creator rapid prototyping a sophisticated web app under pressure.",
-                      text: `Rapid prototyping is all about turning constraints into masterfully crafted solutions. 🛠️
+                      title: "🎮 Matchday Simulation Hub",
+                      description: "Focuses on our continuous countdowns, simulation of active games, and real-time alert systems.",
+                      text: `Managing a high-stakes FIFA match is a game of seconds. 
 
-For Challenge 4 of PromptWars, I set out to build StadiumIQ 🏟️—and it has been one of the most exciting sprints of my developer journey.
+StadiumIQ 🏟️ brings tournament-grade operational power to your screen. With our simulated matchday controller, you can live-test emergency alerts, manage incident reports, track live volunteer tasks, and view live interactive countdowns for upcoming matches:
 
-We wanted to solve a major issue: the fragmentation of operational data at massive sports events. In just a short cycle, we designed and built an interactive system connecting stadium admins, organizers, volunteers, field security staff, and spectators into one unified loop.
+⏰ Live Kickoff Countdown: Tracks real-time countdowns to scheduled fixtures.
+🔔 Broadcaster Interface: Test-fire global announcements and view immediate, live-updated client UI overlays.
+🚨 Live Incident Command: Report medical or security events, dispatch personnel, and track response metrics in real-time.
 
-From engineering the Express backend server with low-latency WebSockets, to carving out beautiful, accessible dark-themed client interfaces, every file built was a step toward building a real, practical operations center.
+Experience the thrill of managing world-class events under pressure with StadiumIQ.
 
-A huge thanks to the community for the inspiration!
-
-Google for Developers Hack2skill
-#BuildWithAI #PromptWarsVirtual #Challenge4 #WebDev #RapidPrototyping #DeveloperStory`
+#EventOps #StadiumTech #WebSimulation #TypeScript #React`
                     }
                   ].map((post, idx) => (
-                    <div key={idx} className="border border-zinc-800/80 bg-zinc-900/30 rounded-2xl p-4 hover:border-emerald-500/20 transition-all flex flex-col gap-3">
+                    <div key={post.title} className="border border-zinc-800/80 bg-zinc-900/30 rounded-2xl p-4 hover:border-emerald-500/20 transition-all flex flex-col gap-3">
                       <div>
                         <h4 className="font-bold text-sm text-white">{post.title}</h4>
                         <p className="text-xs text-zinc-400 mt-0.5 leading-relaxed">{post.description}</p>
@@ -1157,11 +1244,13 @@ Google for Developers Hack2skill
                       
                       <div className="relative">
                         <textarea
+                          id={`share-hub-post-text-${idx}`}
                           readOnly
                           value={post.text}
                           className="w-full h-32 bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs font-mono text-zinc-300 focus:outline-none focus:border-emerald-500/50 resize-none select-all"
                         />
                         <button
+                          id={`share-hub-post-copy-btn-${idx}`}
                           onClick={() => {
                             navigator.clipboard.writeText(post.text);
                             setCopiedIndex(idx);
@@ -1203,6 +1292,7 @@ Google for Developers Hack2skill
                   {(["admin", "organizer", "staff", "volunteer", "fan"] as const).map((roleKey) => (
                     <button
                       key={roleKey}
+                      id={`share-hub-mockup-tab-${roleKey}`}
                       onClick={() => setMockupTab(roleKey)}
                       className={`py-1 text-[10px] font-mono font-bold rounded uppercase transition-all ${
                         mockupTab === roleKey
@@ -1368,7 +1458,7 @@ Google for Developers Hack2skill
                   <div>
                     <h5 className="text-xs font-bold text-emerald-400 font-mono uppercase tracking-wide">Pro-Marketing Tip</h5>
                     <p className="text-[10px] text-zinc-300 leading-relaxed mt-0.5">
-                      Pairing a high-resolution screenshot of the **Admin Page** alongside your **Security & Fan** mobile mockups on LinkedIn shows off the extreme full-stack capability of your StadiumIQ build, making it highly competitive for PromptWars judges!
+                      Pairing a high-resolution screenshot of the **Admin Page** alongside your **Security & Fan** mobile mockups on LinkedIn shows off the extreme full-stack capability of your StadiumIQ build, demonstrating the high-fidelity operational design of your platform!
                     </p>
                   </div>
                 </div>
@@ -1379,8 +1469,9 @@ Google for Developers Hack2skill
 
             {/* Modal Footer */}
             <div className="border-t border-zinc-800/80 pt-5 flex items-center justify-between gap-4">
-              <span className="text-[10px] font-mono text-zinc-500 uppercase">StadiumIQ Hackathon Social Kit — Ready for LinkedIn</span>
+              <span className="text-[10px] font-mono text-zinc-500 uppercase">StadiumIQ Live Broadcast Kit — Share Your Platform</span>
               <button 
+                id="share-hub-close-bottom"
                 onClick={() => setShowShareHub(false)}
                 className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-500 active:scale-98 text-white font-bold rounded-xl transition-all shadow-lg text-sm uppercase font-mono"
               >
