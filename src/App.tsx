@@ -4735,7 +4735,7 @@ export default function App() {
           </div>
 
           {/* Emergency broadcast override */}
-          <div className="rounded-2xl p-5 border border-red-500 bg-[#09090b] shadow-lg flex flex-col gap-4 relative overflow-hidden">
+          <div className="rounded-2xl p-5 border border-red-500 bg-[#09090b] shadow-lg flex flex-col gap-4 relative overflow-hidden flex-grow">
             <div className="absolute top-2 right-2 text-[8px] font-mono text-red-500 uppercase tracking-widest flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping"></span> MASS DISPATCH
             </div>
@@ -4747,43 +4747,69 @@ export default function App() {
               <p className="text-[9px] text-red-400 font-mono mt-0.5 uppercase">Pushes live alerts instantly across all dashboards</p>
             </div>
 
-            <div className="space-y-2.5">
-              {/* Quick Template buttons */}
-              <div className="flex flex-wrap gap-1">
-                {[
-                  "🚨 SEVERE CONGESTION AT GATE A - PLEASE REROUTE TO GATE C",
-                  "⛈️ WEATHER ADVISORY: HEAVY RAIN EXPECTED, AWNINGS IN PLACE",
-                  "🚨 ALL VOLUNTEERS: DISPATCH TO ZONE B INFO DESK CONGESTION CHANNELS"
-                ].map((item, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setNewEmergencyMessage(item)}
-                    className="text-[9px] px-2 py-1 bg-red-950/20 border border-red-900/30 text-red-400 hover:bg-red-900/30 font-mono text-left w-full rounded"
-                  >
-                    Quick template: {item.slice(0, 35)}...
-                  </button>
-                ))}
+            <div className="space-y-3.5 flex-grow flex flex-col justify-between">
+              {/* Quick Template buttons at the top of the body */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] font-mono uppercase tracking-widest text-red-400 font-bold flex items-center gap-1">
+                    ⚡ Quick Dispatch Templates
+                  </span>
+                  <span className="text-[8px] text-zinc-500 font-mono uppercase">Click to auto-populate</span>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-[160px] overflow-y-auto pr-1 custom-scrollbar">
+                  {[
+                    { text: "🚨 SEVERE CONGESTION AT GATE A - PLEASE REROUTE TO GATE C", label: "Gate A Congestion" },
+                    { text: "⛈️ WEATHER ADVISORY: HEAVY RAIN EXPECTED, AWNINGS IN PLACE", label: "Weather Advisory" },
+                    { text: "🚨 ALL VOLUNTEERS: DISPATCH TO ZONE B INFO DESK CONGESTION CHANNELS", label: "Volunteer Dispatch" },
+                    { text: "🚑 MEDICAL EMERGENCY: PARAMEDICS EN ROUTE TO SECTOR 105", label: "Sector 105 Medical" },
+                    { text: "🔥 FIRE REPORTED IN SOUTH CONCOURSE - EVACUATE ZONE 4 IMMEDIATELY", label: "South Concourse Fire" },
+                    { text: "⚡ POWER FLUCTUATION DETECTED - POWERING BACKUP GENERATOR SYSTEMS", label: "Power Grid Issue" },
+                    { text: "🚶 MAXIMUM CAPACITY REACHED AT GATE F - ENFORCING FLOW CONTROLS", label: "Gate F Capacity" },
+                    { text: "📢 CIVIL DISTURBANCE IN SECTOR 312 - SECURITY INTERVENTION IN PROGRESS", label: "Sector 312 Disturbance" },
+                    { text: "⛈️ LIGHTNING ALERT: ALL SPECTATORS ON UPPER DECK PLEASE RETREAT TO CONCOURSE", label: "Lightning Alert" },
+                    { text: "⚠️ HAZARDOUS SPILL REPORTED IN NORTH PLAZA - MAINTENANCE TEAM DEPLOYED", label: "North Plaza Spill" },
+                    { text: "🧒 LOST CHILD PROTOCOL ACTIVE: REPORT TO NEAREST INFORMATION DESK", label: "Lost Child Protocol" },
+                    { text: "🎒 UNATTENDED BAG FOUND AT RECREATION PLAZA - DOG UNIT EN ROUTE", label: "Unattended Package" },
+                    { text: "📣 TEST DRY RUN: THIS IS A DRILL FOR STADIUM MASS BROADCAST ALERTS", label: "System Test Drill" }
+                  ].map((item, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setNewEmergencyMessage(item.text)}
+                      className="text-[9px] p-2 bg-red-950/15 hover:bg-red-950/40 border border-red-900/30 hover:border-red-500/50 text-red-400 hover:text-red-300 font-mono text-left rounded transition-all flex flex-col justify-between min-h-[46px] group cursor-pointer"
+                    >
+                      <span className="font-bold text-[8px] text-red-500 group-hover:text-red-400 uppercase tracking-wide mb-1 block">
+                        {item.label}
+                      </span>
+                      <span className="line-clamp-2 leading-tight text-zinc-300 group-hover:text-white">
+                        {item.text}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <input 
-                type="text" 
-                value={newEmergencyMessage}
-                onChange={(e) => setNewEmergencyMessage(e.target.value)}
-                placeholder="Type emergency alert dispatch message..." 
-                className="w-full bg-black text-white border border-red-900/40 p-2.5 rounded-lg text-xs font-mono placeholder-red-900/40 focus:outline-none focus:border-red-500"
-              />
+              <div className="space-y-2.5 mt-auto border-t border-red-900/30 pt-3">
+                <input 
+                  type="text" 
+                  value={newEmergencyMessage}
+                  onChange={(e) => setNewEmergencyMessage(e.target.value)}
+                  placeholder="Type emergency alert dispatch message..." 
+                  className="w-full bg-black text-white border border-red-900/40 p-2.5 rounded-lg text-xs font-mono placeholder-red-900/40 focus:outline-none focus:border-red-500"
+                />
 
-              <button 
-                onClick={() => {
-                  if (!newEmergencyMessage.trim()) return;
-                  logRoleActivity(`Organizer PUSHED GLOBAL EMERGENCY ADVISORY: "${newEmergencyMessage}"`);
-                  setGlobalEmergencyOverride(newEmergencyMessage);
-                  setNewEmergencyMessage("");
-                }}
-                className="w-full bg-red-600 hover:bg-red-500 text-white font-black text-xs py-2.5 rounded-lg uppercase tracking-wider shadow-[0_0_15px_rgba(220,38,38,0.4)]"
-              >
-                💥 PUSH LIVE GLOBAL OVERRIDE ALERT
-              </button>
+                <button 
+                  onClick={() => {
+                    if (!newEmergencyMessage.trim()) return;
+                    logRoleActivity(`Organizer PUSHED GLOBAL EMERGENCY ADVISORY: "${newEmergencyMessage}"`);
+                    setGlobalEmergencyOverride(newEmergencyMessage);
+                    setNewEmergencyMessage("");
+                  }}
+                  className="w-full bg-red-600 hover:bg-red-500 text-white font-black text-xs py-2.5 rounded-lg uppercase tracking-wider shadow-[0_0_15px_rgba(220,38,38,0.4)] transition-all cursor-pointer"
+                >
+                  💥 PUSH LIVE GLOBAL OVERRIDE ALERT
+                </button>
+              </div>
             </div>
           </div>
         </div>

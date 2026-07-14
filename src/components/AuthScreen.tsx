@@ -163,13 +163,26 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
           }
         }
       })
-      .catch((err) => {
+      .catch((err: any) => {
         console.error("Redirect error:", err);
+        if (err.code === "auth/unauthorized-domain") {
+          setError("unauthorized-domain: Custom domain is not authorized in Firebase Authentication.");
+        } else {
+          setError(err.message || "Google sign-in failed via redirect.");
+        }
       });
   }, [auth, role, onAuthSuccess]);
 
   const handleGoogleLogin = async () => {
     setError("");
+
+    // If on the unauthorized proxy domain, automatically redirect to the authorized URL with a trigger param
+    if (window.location.hostname === "stadiumiq-operations-center.ai.studio") {
+      const targetUrl = `https://stadiumiq-operations-center-646746347637.us-west1.run.app/?triggerGoogleLogin=true&role=${role || "fan"}`;
+      window.location.href = targetUrl;
+      return;
+    }
+
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
@@ -179,18 +192,45 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
         await processGoogleLogin(result, role || "fan");
       } catch (popupErr: any) {
         console.warn("Popup blocked or failed, attempting redirect:", popupErr);
+        if (popupErr.code === "auth/unauthorized-domain") {
+          throw popupErr;
+        }
         await signInWithRedirect(auth, provider);
       }
     } catch (err: any) {
       console.error("Google Auth error:", err);
       if (err.code === "auth/popup-closed-by-user") {
         setError("Sign-in popup was closed before completion.");
+      } else if (err.code === "auth/unauthorized-domain") {
+        setError("unauthorized-domain: Custom domain is not authorized in Firebase Authentication.");
       } else {
         setError("Google sign-in failed. Please try again.");
       }
       setLoading(false);
     }
   };
+
+  // Automatically trigger login on arrival when redirected from the proxy domain
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const trigger = params.get("triggerGoogleLogin");
+    const roleParam = params.get("role");
+    if (trigger === "true") {
+      if (roleParam) {
+        setRole(roleParam as any);
+        setStep("login");
+      }
+      // Remove query parameters immediately to keep URL clean and prevent loops
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, "", newUrl);
+
+      // Trigger the Google Login popup automatically
+      const timer = setTimeout(() => {
+        handleGoogleLogin();
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -713,7 +753,61 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
           </>
         )}
 
-        {error && <p className="text-red-400 mt-6 text-sm text-center font-bold bg-red-950/30 p-2.5 rounded border border-red-900/30">{error}</p>}
+        {error && (
+          <div className="text-red-400 mt-6 text-sm text-center font-bold bg-red-950/30 p-2.5 rounded border border-red-900/30 flex flex-col gap-2">
+            {error.includes("unauthorized-domain") ? (
+              <div className="text-left font-normal space-y-3">
+                <p className="text-red-400 font-bold text-center">⚠️ Unauthorized Domain Error</p>
+                <p className="text-xs text-zinc-300 leading-relaxed">
+                  The custom domain <code className="bg-black/50 px-1.5 py-0.5 rounded font-mono text-emerald-400">stadiumiq-operations-center.ai.studio</code> is not authorized in Firebase. Because the Firebase project is managed by AI Studio, custom domains cannot be added manually (you'll see "To manage settings, ask a project Owner..." in Firebase).
+                </p>
+                <div className="border-t border-red-900/40 pt-2.5">
+                  <p className="text-xs font-bold text-emerald-400 mb-1.5">Please use the official URLs for Google Sign-In:</p>
+                  <div className="flex flex-col gap-2">
+                    <a 
+                      href="https://stadiumiq-operations-center-646746347637.us-west1.run.app" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors border border-emerald-500/30"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <ExternalLink className="w-3.5 h-3.5" /> Published Custom App URL (Direct)
+                      </span>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">Working</span>
+                    </a>
+                    <a 
+                      href="https://ais-pre-3ttmfiqbavdur3t6ls3www-506726946468.asia-southeast1.run.app" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="px-3 py-2 bg-zinc-800/80 hover:bg-zinc-800 text-zinc-300 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors border border-zinc-700"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <ExternalLink className="w-3.5 h-3.5" /> Published App URL (Shared)
+                      </span>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 rounded uppercase tracking-wider font-mono font-bold">Working</span>
+                    </a>
+                    <a 
+                      href="https://ais-dev-3ttmfiqbavdur3t6ls3www-506726946468.asia-southeast1.run.app" 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className="px-3 py-2 bg-zinc-800/80 hover:bg-zinc-800 text-zinc-300 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors border border-zinc-700"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <ExternalLink className="w-3.5 h-3.5" /> Preview (Dev) URL
+                      </span>
+                      <span className="text-[10px] bg-zinc-700 text-zinc-400 px-1.5 py-0.5 rounded uppercase tracking-wider font-mono">Working</span>
+                    </a>
+                  </div>
+                </div>
+                <p className="text-[11px] text-zinc-400 italic">
+                  Alternatively, you can log in with Email/Password or Guest/Volunteer credentials right here.
+                </p>
+              </div>
+            ) : (
+              <span>{error}</span>
+            )}
+          </div>
+        )}
         <button 
           onClick={() => {
             setStep("roles");
