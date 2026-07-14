@@ -47,7 +47,7 @@ Managing large-scale sporting events like the FIFA World Cup involves two distin
 StadiumIQ solves this bifurcation with a **Dual-Engine Architecture**:
 
 - The **Deterministic Decision Engine** catches known query patterns using regex, directly queries a localized SQLite database, and replies using a predefined multilingual template in under 10ms — zero AI calls, zero external API dependency, zero failure modes tied to a third-party service.
-- The **Deep Gemini Integration Engine** serves as the fallback for everything else. It uses Google Gemini 3.5 Flash Lite (with tiered fallback to Gemini 3.5 Flash) and on-demand function calling to retrieve exactly the stadium facts it needs from the SQLite database, rather than reasoning over a fixed, always-included context block.
+- The **Deep Gemini Integration Engine** serves as the fallback for everything else. It uses Google Gemini 3.5 Flash (with tiered fallback to Gemini 3.5 Flash Lite) and on-demand function calling to retrieve exactly the stadium facts it needs from the SQLite database, rather than reasoning over a fixed, always-included context block.
 
 ---
 
@@ -116,7 +116,7 @@ StadiumIQ solves this bifurcation with a **Dual-Engine Architecture**:
 
 StadiumIQ goes beyond a single API call to Gemini — it uses several of the platform's native capabilities deliberately, each chosen for a specific reason:
 
-- **Model-tier fallback with retry/backoff**: requests try `gemini-2.5-flash-lite` first, retry transient errors with exponential backoff, and fall back to `gemini-2.5-flash` if needed — resilience that stays entirely within the Gemini API, with no other AI vendor involved anywhere in the reasoning path.
+- **Model-tier fallback with retry/backoff**: requests try `gemini-3.5-flash` first, retry transient errors with exponential backoff, and fall back to `gemini-3.5-flash-lite` if needed — resilience that stays entirely within the Gemini API, with no other AI vendor involved anywhere in the reasoning path.
 - **Function calling**: rather than always stuffing full database context into every prompt, Gemini requests exactly the data it needs (match schedule, gate density, facility lookup) via defined tools, which the backend executes against the local SQLite database.
 - **Structured JSON output**: responses include a `confidence` field (`grounded` / `uncertain` / `general_knowledge`), used programmatically to decide when to show an official-info fallback — not inferred by keyword-matching the response text.
 - **Implicit caching**: Gemini 2.5+ models cache repeated system-prompt and reference content automatically, at no extra engineering cost, which we rely on rather than the explicit (billing-gated) caching API.
