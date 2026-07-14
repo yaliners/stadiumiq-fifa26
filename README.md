@@ -47,7 +47,7 @@ Managing large-scale sporting events like the FIFA World Cup involves two distin
 StadiumIQ solves this bifurcation with a **Dual-Engine Architecture**:
 
 - The **Deterministic Decision Engine** catches known query patterns using regex, directly queries a localized SQLite database, and replies using a predefined multilingual template in under 10ms — zero AI calls, zero external API dependency, zero failure modes tied to a third-party service.
-- The **Deep Gemini Integration Engine** serves as the fallback for everything else. It uses Google Gemini 3.5 Flash (with tiered fallback to Gemini 3.5 Flash Lite) and on-demand function calling to retrieve exactly the stadium facts it needs from the SQLite database, rather than reasoning over a fixed, always-included context block.
+- The **Deep Gemini Integration Engine** serves as the fallback for everything else. It uses Google Gemini 3.5 Flash (with tiered fallback to Gemini 3.1 Flash Lite) and on-demand function calling to retrieve exactly the stadium facts it needs from the SQLite database, rather than reasoning over a fixed, always-included context block.
 
 ---
 
@@ -116,7 +116,7 @@ StadiumIQ solves this bifurcation with a **Dual-Engine Architecture**:
 
 StadiumIQ goes beyond a single API call to Gemini — it uses several of the platform's native capabilities deliberately, each chosen for a specific reason:
 
-- **Model-tier fallback with retry/backoff**: requests try `gemini-3.5-flash` first, retry transient errors with exponential backoff, and fall back to `gemini-3.5-flash-lite` if needed — resilience that stays entirely within the Gemini API, with no other AI vendor involved anywhere in the reasoning path.
+- **Model-tier fallback with retry/backoff**: requests try `gemini-3.5-flash` first, retry transient errors with exponential backoff, and fall back to `gemini-3.1-flash-lite` if needed — resilience that stays entirely within the Gemini API, with no other AI vendor involved anywhere in the reasoning path.
 - **Function calling**: rather than always stuffing full database context into every prompt, Gemini requests exactly the data it needs (match schedule, gate density, facility lookup) via defined tools, which the backend executes against the local SQLite database.
 - **Structured JSON output**: responses include a `confidence` field (`grounded` / `uncertain` / `general_knowledge`), used programmatically to decide when to show an official-info fallback — not inferred by keyword-matching the response text.
 - **Implicit caching**: Gemini 2.5+ models cache repeated system-prompt and reference content automatically, at no extra engineering cost, which we rely on rather than the explicit (billing-gated) caching API.
@@ -241,6 +241,29 @@ StadiumIQ is built to WCAG AA contrast standards (4.5:1 ratio) across all displa
 - **Accessibility Mode:** toggles into high-contrast monochrome (pure black backgrounds, solid white text, thick borders) with enhanced font scaling
 - **Screen Reader Friendly:** the chat log uses `aria-live="polite"` so screen readers announce updates, including the "thinking" status
 - **Interactive Focus:** visible focus states (`focus-visible:ring-2`) are consistently applied across inputs, language toggles, and suggested-question chips
+
+---
+
+## 📣 Updated "Build in Public" Journey & Evolution
+
+Welcome to the updated chapter of our **Build in Public** journey! In this iteration, StadiumIQ has transitioned from a structural hackathon submission into a highly contextualized, production-grade tournament management workspace.
+
+### 🔄 What We Changed From Our First Attempt
+In our initial sprint, the application succeeded in validating the dual-engine classification model and bootstrapping our SQLite file-based telemetry structures. However, several parts of the companion templates, specifically the **Share Hub & Media Kit**, retained generic hackathon-oriented copy, empty mockup states, and meta references (such as PromptWars Challenge 4 metadata) that distracted from the core football immersion. 
+In this updated revision:
+1. **Contextualized Matchday Hub:** We redesigned the entire **Promo Hub** from a generic marketing drawer into a **Live Matchday Broadcast Console** centered fully around the beautiful game.
+2. **Operational T-Minus Countdown:** Added a dynamic, state-driven live countdown widget that auto-detects current time, filters out past matches, and tracks operational kickoff metrics (e.g. *LIVE NOW ⚽*, *Concluded 🏁*, or precise T-minus indicators) for upcoming fixtures.
+3. **Pristine Clean Type-Safety:** Refactored backend query handlers, cache signatures, and database parameter structures inside `server/db.ts` and `server/chat.ts` to ensure flawless production compilation and absolute immunity against type errors.
+
+### 📈 How Our Prompts Evolved
+Our prompt engineering journey followed a distinct path of architectural maturity:
+* **Stage 1 (Simple Generation):** Our early prompts focused on basic feature creation (e.g. *"create an Express server connected to an SQLite database with some fake matches"*), leading to generic, siloed solutions.
+* **Stage 2 (Pattern & Structure):** As the complexity grew, we evolved our prompts to dictate strict schemas and boundaries (e.g. *"create a Dual-Engine classification workflow with a 10ms deterministic regex match and a high-availability fallback to Gemini 3.5/3.1"*).
+* **Stage 3 (Precision RBAC & Operational Integrity):** In this final stage, we prompted with zero-exposure API key mandates, type-safe param binding, and deep conversational simulation rules to eliminate any mock indicators and ensure a flawless user experience.
+
+*Keep tracking our progress as we scale this platform for the world stage in 2026!* 🏟️
+
+🏆 **Event Hashtags:** #PromptWars #BuildWithAI #FIFA2026 #WebDev #RapidPrototyping #GoogleDevelopers
 
 ---
 
