@@ -5,7 +5,8 @@
 ![WCAG AA Compliant](https://img.shields.io/badge/WCAG-AA%20Compliant-success)
 ![Powered by Gemini](https://img.shields.io/badge/AI-Google%20Gemini-blueviolet)
 
-**Live App:** [https://stadiumiq-operations-center.ai.studio](https://stadiumiq-operations-center.ai.studio)
+**Live App:** https://stadiumiq-operations-center-646746347637.us-west1.run.app/
+
 **PromptWars Virtual — Challenge 4 Submission**
 
 StadiumIQ is a highly optimized, fully responsive, and accessible generative AI tournament operations assistant designed for the FIFA World Cup 2026. Built as a robust single-branch repository, StadiumIQ integrates local, deterministic pattern matching with deep Google Gemini function-calling capabilities. This ensures maximum speed, absolute data reliability, and zero exposure of sensitive telemetry.
