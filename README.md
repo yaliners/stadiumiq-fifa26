@@ -47,7 +47,7 @@ Managing large-scale sporting events like the FIFA World Cup involves two distin
 StadiumIQ solves this bifurcation with a **Dual-Engine Architecture**:
 
 - The **Deterministic Decision Engine** catches known query patterns using regex, directly queries a localized SQLite database, and replies using a predefined multilingual template in under 10ms — zero AI calls, zero external API dependency, zero failure modes tied to a third-party service.
-- The **Deep Gemini Integration Engine** serves as the fallback for everything else. It uses Google Gemini 2.5 Flash Lite (with tiered fallback to Gemini 2.5 Flash) and on-demand function calling to retrieve exactly the stadium facts it needs from the SQLite database, rather than reasoning over a fixed, always-included context block.
+- The **Deep Gemini Integration Engine** serves as the fallback for everything else. It uses Google Gemini 3.5 Flash Lite (with tiered fallback to Gemini 3.5 Flash) and on-demand function calling to retrieve exactly the stadium facts it needs from the SQLite database, rather than reasoning over a fixed, always-included context block.
 
 ---
 
