@@ -262,14 +262,25 @@ We have added a fully functional fan reward and promotion module integrated dire
 
 Welcome to the updated chapter of our **Build in Public** journey! In this iteration, StadiumIQ has transitioned from a structural hackathon submission into a highly contextualized, production-grade tournament management workspace.
 
-### 🔄 What We Changed From Our First Attempt
-In our initial sprint, the application succeeded in validating the dual-engine classification model and bootstrapping our SQLite file-based telemetry structures. However, several parts of the companion templates, specifically the **Share Hub & Media Kit**, retained generic hackathon-oriented copy, empty mockup states, and meta references (such as PromptWars Challenge 4 metadata) that distracted from the core football immersion. 
+### 🔄 Evolution: What We Changed Across Our Sprints
 
-In this updated revision:
-1. **Contextualized Matchday Hub & Concluded Match State:** We redesigned the entire **Promo Hub** from a generic marketing drawer into a **Live Matchday Broadcast Console** centered fully around the beautiful game. The global banner now gracefully handles concluded match statuses (e.g., *FT: Spain 2 - 0 France*), highlighting champion progressions and upcoming spotlight fixtures.
-2. **Operational T-Minus Countdown:** Added a dynamic, state-driven live countdown widget that auto-detects current time, filters out past matches, and tracks operational kickoff metrics (e.g. *LIVE NOW ⚽*, *Concluded 🏁*, or precise T-minus indicators) for upcoming fixtures.
-3. **Pristine Clean Type-Safety:** Refactored backend query handlers, cache signatures, and database parameter structures inside `server/db.ts` and `server/chat.ts` to ensure flawless production compilation and absolute immunity against type errors.
-4. **Interactive Fan Concessions Discount System:** Implemented a robust client-side validation system for matchday concessions coupons, linking live tournament milestones directly to fan engagement through real-time mathematical state calculations.
+StadiumIQ was developed through an iterative process of refinement, moving from a baseline prototype to a highly contextualized, production-grade tournament management workspace:
+
+#### 1️⃣ First Attempt: Bootstrapping the Core Infrastructure
+* **Dual-Engine Classification:** Validated the high-performance Dual-Engine architecture (under 10ms regex matching for common queries with automated Gemini 3.5 fallback).
+* **Database & Seed Foundation:** Bootstrapped the core SQLite database telemetry tables for tracking concession queues, safety alerts, and live stadium events.
+* **Basic Multi-Role UI:** Established the foundation for four synchronized viewpoints (Command, Volunteers, Security, and Fans) with mock data.
+
+#### 2️⃣ Second Attempt: Cleaning Noise & Elevating Immersion
+* **Eliminated Hackathon Distractions:** Cleaned up generic placeholders, empty mock states, and prompt-wars metadata within the **Share Hub & Media Kit** to ensure 100% thematic immersion in the beautiful game.
+* **Operational T-Minus Countdown:** Designed a dynamic, state-driven kickoff timer widget that filters out historical matches to show real-time countdown statuses (*LIVE NOW ⚽*, *Concluded 🏁*, or precise hours-to-kickoff).
+* **Location-Aware Dispatching:** Tied live GPS simulation to emergency overrides, enabling real-time distance-based security tracking.
+
+#### 3️⃣ Latest Attempt: Concluded Match States & Fan Promotion Engines
+* **Tournament Timeline Progression:** Advanced the matchday schedule to reflect Spain defeating France 2-0 in the Semifinals. The app's global banner now seamlessly supports a completed/concluded match state (complete with trophy accents and champion progression indicators).
+* **Interactive Concessions Promo Hub:** Integrated a dedicated **Matchday Promo Hub** in the fan dashboard that allows fans to copy the exclusive `SPAIN_FINAL26` promo code (celebrating Spain's qualification to the final).
+* **Live Cart Discounting Calculator:** Implemented a real-time validation engine in the pre-order concessions cart. Entering a coupon dynamically applies a 20% discount, updating subtotal, tax, savings, and the final total instantly, with the applied coupon code embedded directly into the scannable pickup QR code.
+* **Flawless Type-Safety Refinement:** Cleaned up parameters, cache keys, and queries inside `server/db.ts` and `server/chat.ts` to achieve 100% clean production compilation and strict linter adherence.
 
 ### 📈 How Our Prompts Evolved
 Our prompt engineering journey followed a distinct path of architectural maturity:
