@@ -49,7 +49,7 @@ function setCache(message: string, locale: string, response: ChatResponse, perso
 /**
  * Pydantic-like input validation & sanitization
  */
-function cleanInput(msg: unknown, loc: unknown): { message: string; locale: string } {
+export function cleanInput(msg: unknown, loc: unknown): { message: string; locale: string } {
   // Strip HTML
   let cleanedMessage = String(msg || "").replace(/<[^>]*>/g, "");
   // Cap length at 500 characters (truncate, do not reject)
@@ -69,7 +69,7 @@ function cleanInput(msg: unknown, loc: unknown): { message: string; locale: stri
 /**
  * Promise timeout helper
  */
-function withTimeout<T>(promise: Promise<T>, ms = 12000): Promise<T> {
+export function withTimeout<T>(promise: Promise<T>, ms = 12000): Promise<T> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error("TimeoutError"));

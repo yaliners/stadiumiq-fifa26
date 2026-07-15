@@ -37,8 +37,22 @@ export async function checkRateLimitAndDelay(): Promise<void> {
 }
 
 // Multi-turn session state in memory
+export interface ChatPart {
+  text?: string;
+  functionResponse?: {
+    name: string;
+    response: any;
+    id?: string;
+  };
+}
+
+export interface ChatTurn {
+  role?: "user" | "model" | string;
+  parts: ChatPart[];
+}
+
 export interface ChatSession {
-  history: any[];
+  history: ChatTurn[];
 }
 
 // Map from session ID to its chat history
@@ -257,7 +271,7 @@ async function runWithRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T
 /**
  * Low-level call to Gemini model. Manages the function-calling loop.
  */
-async function callGemini(model: string, contents: any[], locale: string, persona: string = "staff"): Promise<any> {
+async function callGemini(model: string, contents: ChatTurn[], locale: string, persona: string = "staff"): Promise<any> {
   let personaCtx = "";
   if (persona === "organizer") {
     personaCtx = "You are currently answering questions from the perspective of a **Tournament Organizer**. Focus on analytical rigor, tournament administration, scheduling, predictive modeling, team statistics, and stadium coordination. Be highly professional, strategic, and detailed.";
@@ -318,7 +332,7 @@ If you are uncertain or cannot answer the question based on database tools, set 
     const functionCalls = response.functionCalls;
     if (functionCalls && functionCalls.length > 0) {
       // Append the model's response (which contains functionCalls) to contents
-      currentTurnContents.push(candidate.content);
+      currentTurnContents.push(candidate.content as any);
 
       const functionResponseParts: any[] = [];
       for (const call of functionCalls) {
@@ -382,7 +396,7 @@ If you are uncertain or cannot answer the question based on database tools, set 
 /**
  * Public function to call Gemini API with model fallback and backoff retries.
  */
-export async function executeGeminiChat(contents: any[], locale: string = "en", persona: string = "staff"): Promise<any> {
+export async function executeGeminiChat(contents: ChatTurn[], locale: string = "en", persona: string = "staff"): Promise<any> {
   // Local sliding window rate limiting check
   await checkRateLimitAndDelay();
  

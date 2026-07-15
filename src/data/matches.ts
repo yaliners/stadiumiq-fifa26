@@ -1,7 +1,7 @@
 export const upcomingMatches = [
   { id: "u1", teams: "USA vs Germany", date: "July 12, 2026", time: "15:00", venue: "Estadio Azteca" },
   { id: "u2", teams: "Canada vs France", date: "July 14, 2026", time: "20:00", venue: "BC Place" },
-  { id: "u3", teams: "Brazil vs Argentina", date: "July 15, 2026", time: "19:00", venue: "SoFi Stadium" },
+  { id: "u3", teams: "Spain vs Winner of Match 102", date: "July 20, 2026", time: "20:00", venue: "MetLife Stadium" },
   { id: "u4", teams: "Italy vs Portugal", date: "July 16, 2026", time: "17:00", venue: "BC Place" }
 ];
 

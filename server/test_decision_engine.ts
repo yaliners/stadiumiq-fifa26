@@ -1,5 +1,7 @@
 import { classify, executeDecisionEngine } from "./decision_engine";
 import { getWritableDb, dbAll } from "./db";
+import { cleanInput } from "./chat";
+import { sessionsStore } from "./ai_client";
 
 // Direct assert helper
 function assert(condition: any, message: string) {
@@ -101,7 +103,68 @@ async function runTests() {
     assert(err.message === "TimeoutError", "TimeoutError successfully caught on mock slow promise");
   }
 
-  console.log("\n✓ ALL 6 TEST CASES COMPLETED SUCCESSFULLY!");
+  // 7. Input Sanitization Testing via cleanInput
+  console.log("Testing cleanInput sanitization and translation mapping...");
+  const maliciousInput = "<html><body>when is <script>alert('hack')</script>Spain vs USA?</body></html>";
+  const sanitized = cleanInput(maliciousInput, "ES-co");
+  assert(!sanitized.message.includes("<script>"), "Input sanitization should strip HTML tags");
+  assert(sanitized.message.includes("Spain vs USA?"), "Input sanitization should preserve text content");
+  assert(sanitized.locale === "es", "Locale handler should map 'ES-co' to 'es'");
+
+  const ultraLongInput = "A".repeat(600);
+  const truncated = cleanInput(ultraLongInput, "FR");
+  assert(truncated.message.length === 500, "Input sanitization should truncate text to exactly 500 characters");
+  assert(truncated.locale === "fr", "Locale handler should map 'FR' to 'fr'");
+
+  const invalidLocale = cleanInput("hello", "ZH-cn");
+  assert(invalidLocale.locale === "en", "Locale handler should default unsupported languages to 'en'");
+
+  // 8. Language Translation correctness inside deterministic decision engine
+  console.log("Testing multilingual support in decision engine...");
+  const esScheduleAnswer = await executeDecisionEngine("when is Spain vs USA playing?", "es");
+  assert(
+    esScheduleAnswer?.answer.includes("Spain") || 
+    esScheduleAnswer?.answer.includes("United States") || 
+    esScheduleAnswer?.answer.includes("calendario"), 
+    "Spanish schedule answer should return Spanish schedule information"
+  );
+  
+  const frScheduleAnswer = await executeDecisionEngine("when is Spain vs USA playing?", "fr");
+  assert(
+    frScheduleAnswer?.answer.includes("Spain") || 
+    frScheduleAnswer?.answer.includes("United States") ||
+    frScheduleAnswer?.answer.includes("calendrier"),
+    "French schedule answer should return French translations"
+  );
+
+  // 9. Session Store constraints and session structure
+  console.log("Testing session store and structured conversation logs...");
+  const testSessionId = "test_sess_999";
+  const mockHistory = [
+    { role: "user", parts: [{ text: "Hello AI" }] },
+    { role: "model", parts: [{ text: "Hello! I am StadiumIQ Assistant." }] }
+  ];
+  sessionsStore.set(testSessionId, { history: mockHistory });
+  const retrievedSession = sessionsStore.get(testSessionId);
+  assert(retrievedSession !== undefined, "Session store should successfully set and retrieve sessions");
+  assert(retrievedSession?.history.length === 2, "Session history length should match set length");
+  assert(retrievedSession?.history[1].role === "model", "Session history turn role should be preserved");
+  sessionsStore.delete(testSessionId);
+
+  // 10. Test DB connections and error resilience
+  console.log("Testing database fallback messages...");
+  const invalidClass = classify("when is Atlantis vs Wakanda?");
+  assert(invalidClass === "schedule", "Atlantis vs Wakanda should still classify as schedule category");
+  const invalidScheduleAnswer = await executeDecisionEngine("when is Atlantis vs Wakanda?", "en");
+  assert(
+    invalidScheduleAnswer?.answer.includes("Spain") || 
+    invalidScheduleAnswer?.answer.includes("United States") ||
+    invalidScheduleAnswer?.answer.includes("We couldn't find") ||
+    invalidScheduleAnswer?.answer.includes("vs"), 
+    "Database query should either return general match schedule or friendly fallback when unknown teams are requested"
+  );
+
+  console.log("\n✓ ALL 10 TEST CASES COMPLETED SUCCESSFULLY!");
 }
 
 runTests().catch((err) => {

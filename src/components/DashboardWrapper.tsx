@@ -25,6 +25,7 @@ interface DashboardWrapperProps {
   handleLogout: () => void;
   currentUser?: any;
   onUpdateProfile?: (updatedUser: any) => void;
+  liveMatchEvents?: { id: string; team: string; type: string; text: string; time: string; timestamp: string }[];
 }
 
 export function DashboardWrapper({
@@ -47,7 +48,8 @@ export function DashboardWrapper({
   wsConnected = true,
   handleLogout,
   currentUser,
-  onUpdateProfile
+  onUpdateProfile,
+  liveMatchEvents
 }: DashboardWrapperProps) {
   const [loginModal, setLoginModal] = useState<{ isOpen: boolean; role: 'staff' | 'organizer' | 'volunteer' | 'admin' | null }>({ isOpen: false, role: null });
   const [passcode, setPasscode] = useState("");
@@ -578,6 +580,36 @@ export function DashboardWrapper({
           )}
 
           {/* Children Dashboard View */}
+          {liveMatchEvents && liveMatchEvents.length > 0 && (
+            <div id="fifa-live-match-ticker" className="p-4 bg-[#18181b]/60 border border-emerald-500/20 hover:border-emerald-500/40 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 transition-all duration-300 shadow-[0_4px_20px_rgba(16,185,129,0.05)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.1)]">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 font-bold border border-emerald-500/20 shrink-0 text-base animate-pulse">
+                  ⚽
+                </div>
+                <div>
+                  <h4 className="text-[11px] font-mono font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
+                    <span>FIFA 2026 Live Match Ticker</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
+                    <span className="text-[9px] text-zinc-500 font-normal normal-case">Updates in real-time</span>
+                  </h4>
+                  <p className="text-xs text-white font-semibold mt-0.5 animate-fadeIn">
+                    {liveMatchEvents[0].text} <span className="text-emerald-400 ml-1.5 font-mono">[{liveMatchEvents[0].time}]</span>
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 border-t border-zinc-800/20 md:border-t-0 pt-2 md:pt-0">
+                <span className="text-[10px] text-zinc-500 font-mono hidden md:inline">Recent Events:</span>
+                <div className="flex gap-1.5 overflow-x-auto py-1 max-w-[280px]">
+                  {liveMatchEvents.slice(1, 4).map((evt) => (
+                    <span key={evt.id} className="px-2 py-0.5 bg-zinc-900 border border-zinc-800 rounded text-[9px] text-zinc-400 font-mono whitespace-nowrap shrink-0" title={evt.text}>
+                      {evt.type} ({evt.time})
+                    </span>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {children}
         </main>
       </div>

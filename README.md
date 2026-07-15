@@ -5,8 +5,7 @@
 ![WCAG AA Compliant](https://img.shields.io/badge/WCAG-AA%20Compliant-success)
 ![Powered by Gemini](https://img.shields.io/badge/AI-Google%20Gemini-blueviolet)
 
-**Live App:** https://stadiumiq-operations-center-646746347637.us-west1.run.app/
-
+**Live App:** [https://stadiumiq-operations-center.ai.studio](https://stadiumiq-operations-center.ai.studio)
 **PromptWars Virtual — Challenge 4 Submission**
 
 StadiumIQ is a highly optimized, fully responsive, and accessible generative AI tournament operations assistant designed for the FIFA World Cup 2026. Built as a robust single-branch repository, StadiumIQ integrates local, deterministic pattern matching with deep Google Gemini function-calling capabilities. This ensures maximum speed, absolute data reliability, and zero exposure of sensitive telemetry.
@@ -223,7 +222,7 @@ npm run start
 npx tsx server/test_decision_engine.ts
 ```
 
-The test runner asserts six distinct operational cases, all passing at time of submission:
+The test runner asserts ten distinct operational cases, all passing at time of submission:
 
 1. **Schedule Classifier** — matches the schedule pattern and queries the DB for correct team/match data
 2. **Gate Density Classifier** — matches gate patterns and routes to the least congested gateway
@@ -231,6 +230,10 @@ The test runner asserts six distinct operational cases, all passing at time of s
 4. **Rules Classifier** — accurately explains tiebreakers (extra time, penalties, VAR)
 5. **Catch-All Fallthrough** — confirms non-deterministic queries fall through to Gemini rather than being blocked
 6. **Gemini Timeout Mocking** — simulates a slow Gemini response (>4s) and asserts the system returns `success: true` with a polite, non-blocking fallback message — never a raw error
+7. **Input Sanitization (`cleanInput`)** — validates that HTML tags are stripped and inputs exceeding 500 characters are gracefully truncated
+8. **Multilingual Support Correctness** — verifies that schedule queries return accurate translated indicators for both Spanish (`es`) and French (`fr`) locales
+9. **Structured Conversation Session Memory** — asserts that memory session stores set, persist, and retrieve multi-turn user/model history structures correctly
+10. **Database Fallback & Error Resilience** — guarantees that unmatched or invalid queries still return friendly, helpful default schedule tables rather than blank or erroneous responses
 
 ---
 
@@ -245,16 +248,28 @@ StadiumIQ is built to WCAG AA contrast standards (4.5:1 ratio) across all displa
 
 ---
 
+## 🎟️ Matchday Promo Hub & Dynamic Cart Discounting
+
+We have added a fully functional fan reward and promotion module integrated directly into the Matchday Operations & Fan Companion experience:
+
+- **Active Matchday Promo Hub Widget**: Visible in the fan dashboard right underneath the digital ticket wallet, highlighting real-time tournament achievements (e.g., celebrating Spain qualifying for the Grand Final).
+- **Interactive Promo Codes**: Supports copy-to-clipboard actions for codes like `SPAIN_FINAL26` offering **20% off all food concessions and merchandise gear**.
+- **Dynamic Cart Discount Calculator**: Fans can apply promo codes inside the pre-order cart checkout. The system validates the code, calculates subtotals and discounts on-the-fly, updates totals dynamically, and carries the applied discount through to the final scannable order confirmation/pickup voucher.
+
+---
+
 ## 📣 Updated "Build in Public" Journey & Evolution
 
 Welcome to the updated chapter of our **Build in Public** journey! In this iteration, StadiumIQ has transitioned from a structural hackathon submission into a highly contextualized, production-grade tournament management workspace.
 
 ### 🔄 What We Changed From Our First Attempt
 In our initial sprint, the application succeeded in validating the dual-engine classification model and bootstrapping our SQLite file-based telemetry structures. However, several parts of the companion templates, specifically the **Share Hub & Media Kit**, retained generic hackathon-oriented copy, empty mockup states, and meta references (such as PromptWars Challenge 4 metadata) that distracted from the core football immersion. 
+
 In this updated revision:
-1. **Contextualized Matchday Hub:** We redesigned the entire **Promo Hub** from a generic marketing drawer into a **Live Matchday Broadcast Console** centered fully around the beautiful game.
+1. **Contextualized Matchday Hub & Concluded Match State:** We redesigned the entire **Promo Hub** from a generic marketing drawer into a **Live Matchday Broadcast Console** centered fully around the beautiful game. The global banner now gracefully handles concluded match statuses (e.g., *FT: Spain 2 - 0 France*), highlighting champion progressions and upcoming spotlight fixtures.
 2. **Operational T-Minus Countdown:** Added a dynamic, state-driven live countdown widget that auto-detects current time, filters out past matches, and tracks operational kickoff metrics (e.g. *LIVE NOW ⚽*, *Concluded 🏁*, or precise T-minus indicators) for upcoming fixtures.
 3. **Pristine Clean Type-Safety:** Refactored backend query handlers, cache signatures, and database parameter structures inside `server/db.ts` and `server/chat.ts` to ensure flawless production compilation and absolute immunity against type errors.
+4. **Interactive Fan Concessions Discount System:** Implemented a robust client-side validation system for matchday concessions coupons, linking live tournament milestones directly to fan engagement through real-time mathematical state calculations.
 
 ### 📈 How Our Prompts Evolved
 Our prompt engineering journey followed a distinct path of architectural maturity:

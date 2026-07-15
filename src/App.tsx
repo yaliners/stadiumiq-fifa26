@@ -76,7 +76,9 @@ import {
   Radio,
   WifiOff,
   Eye,
-  EyeOff
+  EyeOff,
+  Trophy,
+  Ticket
 } from "lucide-react";
 
 import { DashboardWrapper } from "./components/DashboardWrapper";
@@ -538,10 +540,10 @@ export default function App() {
     { id: "m1", date: "July 11, 2026", time: "20:00", match: "Spain vs Belgium", venue: "Los Angeles", status: "Complete", density: "High", staffing: "Optimal" },
     { id: "m2", date: "July 12, 2026", time: "17:00", match: "Norway vs England", venue: "Miami", status: "Complete", density: "High", staffing: "Optimal" },
     { id: "m3", date: "July 12, 2026", time: "19:00", match: "Argentina vs Switzerland", venue: "Kansas City", status: "Complete", density: "High", staffing: "Optimal" },
-    { id: "m4", date: "July 15, 2026", time: "00:30", match: "France vs Spain", venue: "Dallas", status: "Scheduled", density: "Extreme", staffing: "Surge Required" },
+    { id: "m4", date: "July 15, 2026", time: "00:30", match: "France vs Spain (0 - 2)", venue: "Dallas", status: "Complete", density: "Extreme", staffing: "Optimal" },
     { id: "m5", date: "July 16, 2026", time: "00:30", match: "England vs Argentina", venue: "Atlanta", status: "Scheduled", density: "Extreme", staffing: "Surge Required" },
-    { id: "m6", date: "July 19, 2026", time: "02:30", match: "Third Place Play-off", venue: "Miami", status: "Scheduled", density: "High", staffing: "Surge Required" },
-    { id: "m7", date: "July 20, 2026", time: "00:30", match: "FIFA WC Final", venue: "New Jersey", status: "Scheduled", density: "Extreme", staffing: "Surge Required" },
+    { id: "m6", date: "July 19, 2026", time: "02:30", match: "Third Place Play-off: France vs Loser of Match 102", venue: "Miami", status: "Scheduled", density: "High", staffing: "Surge Required" },
+    { id: "m7", date: "July 20, 2026", time: "00:30", match: "FIFA WC Final: Spain vs Winner of Match 102", venue: "New Jersey", status: "Scheduled", density: "Extreme", staffing: "Surge Required" },
     { id: "m8", date: "July 14, 2026", time: "21:00", match: "Brazil vs Italy", venue: "Mexico City", status: "Scheduled", density: "Extreme", staffing: "Surge Required" },
     { id: "m9", date: "July 08, 2026", time: "19:00", match: "Mexico vs Colombia", venue: "Mexico City", status: "Complete", density: "High", staffing: "Optimal" },
     { id: "m10", date: "July 08, 2026", time: "18:00", match: "Canada vs Portugal", venue: "Vancouver", status: "Scheduled", density: "High", staffing: "Optimal" },
@@ -560,6 +562,13 @@ export default function App() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [wsConnected, setWsConnected] = useState<boolean>(true);
   const [alerts, setAlerts] = useState<Alert[]>([]);
+  // Real-time FIFA match event feed
+  const [liveMatchEvents, setLiveMatchEvents] = useState<{ id: string; team: string; type: string; text: string; time: string; timestamp: string }[]>(() => {
+    return [
+      { id: "me_init1", team: "FRA", type: "KICKOFF", text: "🏁 Kickoff! The referee blows the whistle and Match 101 between France and Spain is officially underway!", time: "0'", timestamp: new Date().toISOString() },
+      { id: "me_init2", team: "ESP", type: "CHANCE", text: "⚡ Early opportunity! Spain midfielder sends a powerful header just over the crossbar!", time: "5'", timestamp: new Date().toISOString() }
+    ];
+  });
   const [loading, setLoading] = useState(false);
   const [sessionId] = useState(() => Math.random().toString(36).substring(2, 12));
 
@@ -649,13 +658,13 @@ export default function App() {
     const liveDates = [15, 16, 19, 20];
     const hasLiveMatchToday = isJuly && liveDates.includes(date);
 
-    let defaultMatch = { score: "0 - 0", minute: 0, home: "FRA", away: "ESP", status: "Scheduled", matchName: "Match 101" };
+    let defaultMatch = { score: "0 - 2", minute: 90, home: "FRA", away: "ESP", status: "Concluded", matchName: "Match 101" };
 
     if (hasLiveMatchToday) {
-      if (date === 15) defaultMatch = { score: "0 - 0", minute: 1, home: "FRA", away: "ESP", status: "Live", matchName: "Match 101" };
+      if (date === 15) defaultMatch = { score: "0 - 2", minute: 90, home: "FRA", away: "ESP", status: "Concluded", matchName: "Match 101" };
       else if (date === 16) defaultMatch = { score: "0 - 0", minute: 1, home: "ENG", away: "ARG", status: "Live", matchName: "Match 102" };
-      else if (date === 19) defaultMatch = { score: "0 - 0", minute: 1, home: "TBD", away: "TBD", status: "Live", matchName: "Third Place Play-off" };
-      else if (date === 20) defaultMatch = { score: "0 - 0", minute: 1, home: "TBD", away: "TBD", status: "Live", matchName: "Final" };
+      else if (date === 19) defaultMatch = { score: "0 - 0", minute: 1, home: "FRA", away: "ENG", status: "Live", matchName: "Third Place Play-off" };
+      else if (date === 20) defaultMatch = { score: "0 - 0", minute: 1, home: "ESP", away: "ENG", status: "Live", matchName: "Final" };
     }
 
     const saved = localStorage.getItem("stadiumIq_liveMatch");
@@ -680,7 +689,7 @@ export default function App() {
     const hasLiveMatchToday = isJuly && liveDates.includes(date);
 
     if (!hasLiveMatchToday) {
-      setLiveMatchData({ score: "0 - 0", minute: 0, home: "FRA", away: "ESP", status: "Scheduled", matchName: "Match 101" });
+      setLiveMatchData({ score: "0 - 2", minute: 90, home: "FRA", away: "ESP", status: "Concluded", matchName: "Match 101" });
       localStorage.removeItem("stadiumIq_liveMatch");
     }
   }, []);
@@ -719,6 +728,14 @@ export default function App() {
   const [qrSeed, setQrSeed] = useState(Date.now());
   const [secondsLeft, setSecondsLeft] = useState(60);
   const [redeemedVouchers, setRedeemedVouchers] = useState<Record<string, boolean>>({});
+
+  // PROMO CODE & DISCOUNT STATES
+  const [promoCodeInput, setPromoCodeInput] = useState("");
+  const [activeDiscount, setActiveDiscount] = useState(0); // 0.20 for 20%
+  const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [promoSuccessMessage, setPromoSuccessMessage] = useState<string | null>(null);
+  const [copiedPromo, setCopiedPromo] = useState(false);
 
   // Dynamic gate timer countdown update based on selectedStadium
   useEffect(() => {
@@ -1674,6 +1691,11 @@ export default function App() {
             if (data.stadium_id === currentStadiumDbId) {
               setSimulatedDensity(data.densities);
             }
+          } else if (data.type === "live_match_event") {
+            setLiveMatchEvents((prev) => {
+              if (prev.some((e) => e.id === data.event.id)) return prev;
+              return [data.event, ...prev].slice(0, 15);
+            });
           }
         } catch (e) {
           console.error("[WS] Message parse error:", e);
@@ -2471,17 +2493,17 @@ export default function App() {
     const getTicketDetailsForStadium = (stadiumId: string) => {
       const detailsMap: Record<string, { match: string; teams: string; date: string; gate: string; section: string; venue: string }> = {
         st_sofi: {
-          match: "MATCH 101 - SEMI-FINAL",
-          teams: "France vs Spain",
-          date: "JULY 15, 2026 • 20:00",
+          match: "MATCH 104 - GRAND FINAL",
+          teams: "Spain vs Winner of Match 102",
+          date: "JULY 20, 2026 • 20:00",
           gate: "GATE A",
           section: "SEC 112",
-          venue: "SoFi Stadium"
+          venue: "MetLife Stadium"
         },
         st_metlife: {
           match: "MATCH 104 - GRAND FINAL",
-          teams: "Argentina vs England",
-          date: "JULY 19, 2026 • 20:00",
+          teams: "Spain vs Winner of Match 102",
+          date: "JULY 20, 2026 • 20:00",
           gate: "GATE B",
           section: "SEC 104",
           venue: "MetLife Stadium"
@@ -2564,7 +2586,7 @@ export default function App() {
                         <div className="absolute left-0 top-0 right-0 h-0.5 bg-emerald-500 shadow-[0_2px_8px_#10b981] animate-bounce" style={{ animationDuration: "2s" }}></div>
                       )}
                       <img 
-                        src={`https://api.qrserver.com/v1/create-qr-code/?size=96x96&color=000000&bgcolor=ffffff&data=${encodeURIComponent(`FIFA2026:MATCH101:FRA-vs-ESP:SEC204:GATE-C:USER-${sessionId}:${qrSeed}`)}`}
+                        src={`https://api.qrserver.com/v1/create-qr-code/?size=96x96&color=000000&bgcolor=ffffff&data=${encodeURIComponent(`FIFA2026:${ticketDetails.match.replace(/\s+/g, '_')}:${ticketDetails.teams.replace(/\s+/g, '_')}:USER-${sessionId}:${qrSeed}`)}`}
                         alt="Digital Ticket QR Code"
                         className={`w-20 h-20 transition-opacity duration-300 ${ticketScanned ? "opacity-25" : ""}`}
                         referrerPolicy="no-referrer"
@@ -2614,6 +2636,44 @@ export default function App() {
             </div>
           </div>
 
+          {/* Matchday Promo & Coupon Hub */}
+          <div className={`p-4 sm:p-5 rounded-2xl border ${accessibilityMode ? "border-white bg-black text-white" : "border-[#27272a] bg-[#09090b] shadow-lg"} flex flex-col justify-between shrink-0`}>
+            <div className="flex items-center justify-between border-b border-[#27272a] pb-2 sm:pb-3">
+              <h3 className="font-bold text-xs tracking-wider uppercase text-white flex items-center gap-1.5">
+                <Ticket className="w-4 h-4 text-[#22c55e]" /> Matchday Promo Hub
+              </h3>
+              <span className="text-[9px] font-mono text-emerald-400 font-bold bg-emerald-400/10 px-2 py-0.5 rounded animate-pulse">ACTIVE OFFER</span>
+            </div>
+            
+            <div className="mt-3 space-y-3">
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col gap-2 relative overflow-hidden">
+                <div className="absolute -right-6 -bottom-6 opacity-10 rotate-12">
+                  <Trophy className="w-20 h-20 text-emerald-400" />
+                </div>
+                <div>
+                  <span className="text-[8px] font-mono text-emerald-400 font-bold uppercase tracking-wider bg-emerald-500/20 px-2 py-0.5 rounded">Spain Final Qualifier Promo</span>
+                  <h4 className="text-xs font-bold text-white mt-1.5 uppercase">Claim 20% Off Concessions & Gear!</h4>
+                  <p className="text-[10px] text-zinc-400 leading-relaxed mt-1">
+                    Spain has officially qualified for the Grand Final! Grab snacks or a jersey with our exclusive matchday coupon.
+                  </p>
+                </div>
+                <div className="flex items-center justify-between bg-zinc-950 p-2 rounded-lg border border-zinc-800 mt-1">
+                  <span className="text-xs font-mono font-bold text-zinc-300">SPAIN_FINAL26</span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText("SPAIN_FINAL26");
+                      setCopiedPromo(true);
+                      setTimeout(() => setCopiedPromo(false), 2000);
+                    }}
+                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[9px] uppercase font-mono rounded transition-colors active:scale-95"
+                  >
+                    {copiedPromo ? "Copied!" : "Copy"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Pre-order Merch/Food */}
           <div className={`p-4 sm:p-5 rounded-2xl border ${accessibilityMode ? "border-white bg-black text-white" : "border-[#27272a] bg-[#09090b] shadow-lg"} flex flex-col justify-between flex-1 min-h-0`}>
             <div className="flex items-center justify-between border-b border-[#27272a] pb-2 sm:pb-3">
@@ -2625,7 +2685,7 @@ export default function App() {
 
             {!orderSubmitted ? (
               <>
-                <div className="space-y-2 overflow-y-auto pr-1 flex-1 min-h-0 py-2">
+                <div className="space-y-2 overflow-y-auto pr-1 flex-1 min-h-0 py-2 max-h-[220px]">
                   {[
                     { name: "🌭 Classic Stadium Hotdog", price: 8.50 },
                     { name: "🥤 Commemorative FIFA Cup", price: 6.00 },
@@ -2677,10 +2737,69 @@ export default function App() {
                 </div>
 
                 <div className="border-t border-[#27272a] pt-3 flex flex-col gap-2">
-                  <div className="flex justify-between items-center text-[11px] font-mono">
-                    <span className="text-zinc-500 uppercase">TOTAL:</span>
-                    <span className="text-[#22c55e] font-black text-sm">
+                  {/* Coupon Code Application Field */}
+                  <div className="border-b border-[#27272a]/40 pb-2.5 mb-1">
+                    <div className="flex gap-1.5 items-center">
+                      <input
+                        type="text"
+                        value={promoCodeInput}
+                        onChange={(e) => {
+                          setPromoCodeInput(e.target.value);
+                          setPromoError(null);
+                          setPromoSuccessMessage(null);
+                        }}
+                        placeholder="ENTER PROMO CODE"
+                        className="flex-1 min-w-0 bg-black text-white border border-[#27272a] px-2.5 py-1.5 rounded-lg text-[10px] font-mono focus:outline-none focus:border-emerald-500 uppercase"
+                      />
+                      <button
+                        onClick={() => {
+                          const code = promoCodeInput.trim().toUpperCase();
+                          if (code === "SPAIN_FINAL26") {
+                            setActiveDiscount(0.20);
+                            setAppliedPromo("SPAIN_FINAL26");
+                            setPromoSuccessMessage("20% DISCOUNT APPLIED SUCCESSFULLY!");
+                            setPromoError(null);
+                          } else if (code === "") {
+                            setPromoError("PLEASE ENTER A CODE");
+                            setPromoSuccessMessage(null);
+                          } else {
+                            setPromoError("INVALID COUPON CODE");
+                            setPromoSuccessMessage(null);
+                          }
+                        }}
+                        className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-[9px] uppercase rounded-lg transition-all"
+                      >
+                        APPLY
+                      </button>
+                    </div>
+                    {promoError && (
+                      <p className="text-[9px] text-red-400 font-mono mt-1 uppercase">⚠️ {promoError}</p>
+                    )}
+                    {promoSuccessMessage && (
+                      <p className="text-[9px] text-emerald-400 font-mono mt-1 uppercase">🎉 {promoSuccessMessage}</p>
+                    )}
+                  </div>
+
+                  <div className="flex justify-between items-center text-[10px] font-mono text-zinc-500">
+                    <span className="uppercase">SUBTOTAL:</span>
+                    <span>
                       ${cart.reduce((sum, c) => sum + (c.price * c.quantity), 0).toFixed(2)}
+                    </span>
+                  </div>
+
+                  {activeDiscount > 0 && (
+                    <div className="flex justify-between items-center text-[10px] font-mono text-emerald-400">
+                      <span className="uppercase font-bold">PROMO DISCOUNT (20%):</span>
+                      <span>
+                        -${(cart.reduce((sum, c) => sum + (c.price * c.quantity), 0) * activeDiscount).toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center text-[11px] font-mono">
+                    <span className="text-zinc-300 font-bold uppercase">FINAL TOTAL:</span>
+                    <span className="text-[#22c55e] font-black text-sm">
+                      ${(cart.reduce((sum, c) => sum + (c.price * c.quantity), 0) * (1 - activeDiscount)).toFixed(2)}
                     </span>
                   </div>
 
@@ -2731,7 +2850,7 @@ export default function App() {
                             );
                             
                             setTimeout(() => {
-                              const total = cart.reduce((sum, c) => sum + (c.price * c.quantity), 0);
+                              const total = cart.reduce((sum, c) => sum + (c.price * c.quantity), 0) * (1 - activeDiscount);
                               setLastOrderDetails({
                                 items: [...cart],
                                 total: total
@@ -2815,7 +2934,7 @@ export default function App() {
         </div>
       </div>
       <div className="w-full mt-6">
-        <MatchesSection selectedStadium={selectedStadium} stadiums={stadiums} />
+        <MatchesSection selectedStadium={selectedStadium} stadiums={stadiums} liveMatchEvents={liveMatchEvents} />
       </div>
     </>
     );
@@ -4264,7 +4383,7 @@ export default function App() {
               <p className="text-xs text-zinc-500">Live match day schedule, past scores, and upcoming matches for this venue</p>
             </div>
           </div>
-          <MatchesSection selectedStadium={selectedStadium} stadiums={stadiums} />
+          <MatchesSection selectedStadium={selectedStadium} stadiums={stadiums} liveMatchEvents={liveMatchEvents} />
         </div>
 
         {/* HIGH RESOLUTION SCANNABLE TUNNEL PASS MODAL */}
@@ -4840,6 +4959,7 @@ export default function App() {
       onUpdateProfile={(updatedUser) => {
         setUser(updatedUser);
       }}
+      liveMatchEvents={liveMatchEvents}
     >
       {persona !== "fan" && false ? (
         <div className="w-full flex-1 flex flex-col items-center justify-center p-8 bg-[#09090b]/50 border border-red-500/20 rounded-2xl min-h-[400px] text-center space-y-4 animate-fadeIn">
@@ -4860,33 +4980,53 @@ export default function App() {
       ) : (
         <>
           {/* Global Live Match Banner */}
-          {liveMatchData.status === "Live" && (
-            <div className="mb-6 w-full rounded-2xl border border-[#27272a] bg-[#09090b]/80 backdrop-blur-md shadow-xl flex items-center justify-between p-4 overflow-hidden relative">
+          {(liveMatchData.status === "Live" || liveMatchData.status === "Concluded" || liveMatchData.status === "Complete" || liveMatchData.status === "FT") && (
+            <div className="mb-6 w-full rounded-2xl border border-[#27272a] bg-[#09090b]/80 backdrop-blur-md shadow-xl flex flex-col md:flex-row md:items-center justify-between p-4 overflow-hidden relative gap-4">
               <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-transparent pointer-events-none" />
               <div className="flex items-center gap-4 z-10">
-                <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-500 shadow-inner">
-                  <Activity className="w-6 h-6 animate-pulse" />
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-inner shrink-0 ${
+                  liveMatchData.status === "Live" 
+                    ? "bg-rose-500/10 border border-rose-500/20 text-rose-500 animate-pulse" 
+                    : "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+                }`}>
+                  {liveMatchData.status === "Live" ? (
+                    <Activity className="w-6 h-6 animate-pulse" />
+                  ) : (
+                    <Trophy className="w-6 h-6 text-yellow-400 animate-bounce" style={{ animationDuration: '3s' }} />
+                  )}
                 </div>
                 <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 bg-rose-500/10 text-rose-400 text-[10px] font-bold rounded border border-rose-500/20 uppercase tracking-widest">{liveMatchData.status}</span>
-                    <span className="text-sm font-black text-white uppercase tracking-wider">{liveMatchData.home} vs {liveMatchData.away}</span>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={`px-2 py-0.5 text-[10px] font-bold rounded border uppercase tracking-widest ${
+                      liveMatchData.status === "Live"
+                        ? "bg-rose-500/10 text-rose-400 border-rose-500/20 animate-pulse"
+                        : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                    }`}>
+                      {liveMatchData.status === "Live" ? "LIVE" : "CONCLUDED"}
+                    </span>
+                    <span className="text-sm font-black text-white uppercase tracking-wider">
+                      {liveMatchData.home} {liveMatchData.score} {liveMatchData.away}
+                    </span>
                   </div>
-                  <div className="flex items-center gap-3 mt-1 text-[10px] font-mono text-zinc-400">
-                    <span className="text-emerald-400 font-bold tracking-wider">Score: {liveMatchData.score} • {liveMatchData.minute}'</span>
-                    <span className="w-1 h-1 rounded-full bg-zinc-700" />
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[10px] font-mono text-zinc-400">
+                    {liveMatchData.status === "Live" ? (
+                      <span className="text-emerald-400 font-bold tracking-wider">Minute: {liveMatchData.minute}'</span>
+                    ) : (
+                      <span className="text-emerald-400 font-bold tracking-wider">FT: Spain advances to the Grand Final!</span>
+                    )}
+                    <span className="hidden sm:inline w-1 h-1 rounded-full bg-zinc-700" />
                     <span>
                        {selectedStadium === "st_sofi" ? "Los Angeles (SoFi)" : selectedStadium === "st_metlife" ? "New Jersey (MetLife)" : selectedStadium === "st_mercedes" ? "Atlanta (MBS)" : selectedStadium === "st_azteca" ? "Mexico City (Azteca)" : "Vancouver (BC Place)"}
                     </span>
                   </div>
                 </div>
               </div>
-              {persona === "organizer" && (
-                 <div className="text-[10px] font-mono text-zinc-500 uppercase tracking-widest text-right z-10 hidden md:block">
-                    <span className="block text-white font-bold text-lg mb-0.5">{staffRoster.length * 1542}</span>
-                    Live Fans in Stadium
-                 </div>
-              )}
+              
+              <div className="z-10 flex flex-col justify-center text-left md:text-right font-mono shrink-0">
+                <span className="text-[9px] text-[#71717a] font-bold uppercase tracking-wider">Upcoming Spotlight</span>
+                <span className="text-xs text-white font-black uppercase mt-0.5">🏆 Match 104: Spain vs Winner of Match 102</span>
+                <span className="text-[9px] text-emerald-400 font-bold uppercase mt-0.5">July 20, 2026 @ MetLife Stadium</span>
+              </div>
             </div>
           )}
           <AnimatePresence mode="wait">

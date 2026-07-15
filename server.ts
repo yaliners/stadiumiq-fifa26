@@ -348,6 +348,39 @@ async function startServer() {
     }
   }, 25000); // every 25s
 
+  // C. Real-time FIFA Match Action Simulator
+  // Periodically broadcasts live soccer events to connected clients
+  const matchEvents = [
+    { id: "me_1", team: "FRA", type: "GOAL", text: "⚽ GOOOAL! France striker fires a breathtaking volley into the top corner from 25 yards out!", time: "12'" },
+    { id: "me_2", team: "ESP", type: "YELLOW_CARD", text: "🟨 Yellow Card shown to Spain's defensive midfielder for a tactical foul.", time: "18'" },
+    { id: "me_3", team: "FRA", type: "OFFSIDE", text: "🏁 Offside flag raised! France's lightning-fast winger was just half a yard early.", time: "28'" },
+    { id: "me_4", team: "ESP", type: "FOUL", text: "💥 High drama! Spain awarded a dangerous free-kick just outside the penalty arc.", time: "34'" },
+    { id: "me_5", team: "ESP", type: "GOAL", text: "⚽ GOOOAL! Spain converts the free-kick! A curling masterclass around the wall!", time: "35'" },
+    { id: "me_6", team: "FRA", type: "SUBSTITUTION", text: "🔄 Substitution: France brings on a fresh defender to cope with Spain's flank pressure.", time: "44'" },
+    { id: "me_7", team: "ESP", type: "CHANCE", text: "⚡ Close! Spain's curling shot misses the far post by inches after a sleek counterattack.", time: "53'" },
+    { id: "me_8", team: "FRA", type: "CORNER", text: "🚩 Corner kick for France after a brilliant defensive block inside the box.", time: "61'" },
+    { id: "me_9", team: "FRA", type: "SAVE", text: "🧤 UNBELIEVABLE SAVE! The Spain goalkeeper makes a reflex stop on a close-range header!", time: "73'" },
+    { id: "me_10", team: "ESP", type: "SUBSTITUTION", text: "🔄 Substitution: Spain locks down the midfield, replacing an attacker with a holding specialist.", time: "81'" },
+    { id: "me_11", team: "FRA", type: "CHANCE", text: "💥 Drama in the closing minutes! France striker's header skims off the crossbar!", time: "88'" }
+  ];
+
+  let eventIndex = 0;
+  setInterval(() => {
+    try {
+      const selectedEvent = matchEvents[eventIndex];
+      broadcast({
+        type: "live_match_event",
+        event: {
+          ...selectedEvent,
+          timestamp: new Date().toISOString()
+        }
+      });
+      eventIndex = (eventIndex + 1) % matchEvents.length;
+    } catch (err) {
+      console.error("[MatchSimulator] Background match simulation error:", err);
+    }
+  }, 12000); // every 12 seconds
+
   // Global Express Error Handler
   app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
     const errorId = Math.random().toString(36).substring(2, 10).toUpperCase();
