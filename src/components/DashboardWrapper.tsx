@@ -1,8 +1,262 @@
 import React, { useState, useEffect } from "react";
-import { Accessibility, Shield, Calendar, Users, Award, Settings, User, Heart, X, HelpCircle, MapPin, Mail, Globe, Palette, ShieldAlert, Info, Edit, Check, Eye, EyeOff, Share2, Clipboard, ExternalLink, Download, Laptop, Smartphone, Tablet } from "lucide-react";
+import { Accessibility, Shield, Calendar, Users, Award, Settings, User, Heart, X, HelpCircle, MapPin, Clock, Mail, Globe, Palette, ShieldAlert, Info, Edit, Check, Eye, EyeOff, Share2, Clipboard, ExternalLink, Download, Laptop, Smartphone, Tablet } from "lucide-react";
 import { db, auth } from "../lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { upcomingMatches } from "../data/matches";
+
+const bannerTranslations = {
+  en: {
+    title: "🥉 FIFA WORLD CUP 2026 — THIRD PLACE PLAY-OFF",
+    teams: "🇫🇷 France vs 🏴󠁧󠁢󠁥󠁮󠁧󠁿 England",
+    date: "Friday, July 17, 2026 • 12:30 PM (Local)",
+    stadium: "Hard Rock Stadium, Miami",
+    live: "LIVE NOW ⚽",
+    upcoming: "UPCOMING 📅",
+    concluded: "CONCLUDED 🏁",
+    score: "Live Score",
+    minute: "Minute",
+    concludedWinner: "Concluded: France won 2-1"
+  },
+  es: {
+    title: "🥉 COPA MUNDIAL DE LA FIFA 2026 — TERCER PUESTO",
+    teams: "🇫🇷 Francia vs 🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra",
+    date: "Viernes, 17 de Julio de 2026 • 12:30 PM (Local)",
+    stadium: "Hard Rock Stadium, Miami",
+    live: "EN VIVO ⚽",
+    upcoming: "PRÓXIMO 📅",
+    concluded: "CONCLUIDO 🏁",
+    score: "Resultado en Vivo",
+    minute: "Minuto",
+    concludedWinner: "Concluido: Francia ganó 2-1"
+  },
+  fr: {
+    title: "🥉 COUPE DU MONDE DE LA FIFA 2026 — TROISIÈME PLACE",
+    teams: "🇫🇷 France vs 🏴󠁧󠁢󠁥󠁮󠁧󠁿 Angleterre",
+    date: "Vendredi 17 Juillet 2026 • 12h30 (Local)",
+    stadium: "Hard Rock Stadium, Miami",
+    live: "EN DIRECT ⚽",
+    upcoming: "À VENIR 📅",
+    concluded: "TERMINÉ 🏁",
+    score: "Score en Direct",
+    minute: "Minute",
+    concludedWinner: "Terminé: France a gagné 2-1"
+  },
+  de: {
+    title: "🥉 FIFA FUSSBALL-WELTMEISTERSCHAFT 2026 — SPIEL UM PLATZ 3",
+    teams: "🇫🇷 Frankreich vs 🏴󠁧󠁢󠁥󠁮󠁧󠁿 England",
+    date: "Freitag, 17. Juli 2026 • 12:30 Uhr (Lokal)",
+    stadium: "Hard Rock Stadium, Miami",
+    live: "LIVE ⚽",
+    upcoming: "BEVORSTEHEND 📅",
+    concluded: "BEENDET 🏁",
+    score: "Live-Ergebnis",
+    minute: "Minute",
+    concludedWinner: "Beendet: Frankreich gewann 2-1"
+  },
+  pt: {
+    title: "🥉 COPA DO MUNDO FIFA 2026 — DISPUTA DO 3º LUGAR",
+    teams: "🇫🇷 França vs 🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra",
+    date: "Sexta-feira, 17 de Julho de 2026 • 12:30 (Local)",
+    stadium: "Hard Rock Stadium, Miami",
+    live: "AO VIVO ⚽",
+    upcoming: "PRÓXIMO 📅",
+    concluded: "CONCLUÍDO 🏁",
+    score: "Placar ao Vivo",
+    minute: "Minuto",
+    concludedWinner: "Concluído: França venceu por 2-1"
+  },
+  it: {
+    title: "🥉 COPPA DEL MONDO FIFA 2026 — FINALE 3° POSTO",
+    teams: "🇫🇷 Francia vs 🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inghilterra",
+    date: "Venerdì 17 Luglio 2026 • 12:30 (Locale)",
+    stadium: "Hard Rock Stadium, Miami",
+    live: "LIVE ⚽",
+    upcoming: "IN ARRIVO 📅",
+    concluded: "CONCLUSO 🏁",
+    score: "Punteggio Live",
+    minute: "Minuto",
+    concludedWinner: "Concluso: La Francia ha vinto 2-1"
+  }
+};
+
+const ThirdPlacePlayoffBanner = ({ locale }: { locale: "en" | "es" | "fr" | "de" | "pt" | "it" }) => {
+  const trans = bannerTranslations[locale] || bannerTranslations.en;
+  
+  // Real-time date context: July 17, 2026 at 12:30 PM PDT/Local (-07:00 offset to match user environment)
+  const matchTime = new Date("2026-07-17T12:30:00-07:00").getTime();
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const diff = matchTime - now;
+
+  let displayStatus: "upcoming" | "live" | "concluded" = "upcoming";
+  let countdownString = "";
+  let liveScoreText = "0 - 0";
+  let liveMinuteText = "1'";
+
+  if (diff > 0) {
+    displayStatus = "upcoming";
+    const totalSecs = Math.floor(diff / 1000);
+    const days = Math.floor(totalSecs / (24 * 3600));
+    const hours = Math.floor((totalSecs % (24 * 3600)) / 3600);
+    const minutes = Math.floor((totalSecs % 3600) / 60);
+    const seconds = totalSecs % 60;
+
+    const parts = [];
+    if (days > 0) parts.push(`${days}d`);
+    parts.push(`${hours.toString().padStart(2, "0")}h`);
+    parts.push(`${minutes.toString().padStart(2, "0")}m`);
+    parts.push(`${seconds.toString().padStart(2, "0")}s`);
+    countdownString = `T-MINUS ${parts.join(" ")}`;
+  } else if (diff > -2 * 60 * 60 * 1000) {
+    // 2 hours duration
+    displayStatus = "live";
+    const elapsedMinutes = Math.floor(Math.abs(diff) / (1000 * 60));
+    const m = Math.min(elapsedMinutes, 120);
+    liveMinuteText = m > 90 ? `90+${m - 90}'` : `${m}'`;
+    
+    if (m < 22) {
+      liveScoreText = "0 - 0";
+    } else if (m < 61) {
+      liveScoreText = "1 - 0";
+    } else if (m < 83) {
+      liveScoreText = "1 - 1";
+    } else {
+      liveScoreText = "2 - 1";
+    }
+  } else {
+    displayStatus = "concluded";
+  }
+
+  return (
+    <div 
+      id="third-place-playoff-banner"
+      role="region"
+      aria-label="Third Place Play-off Live Banner"
+      className={`relative overflow-hidden p-4 sm:p-5 rounded-2xl border transition-all duration-300 ${
+        displayStatus === "live"
+          ? "border-red-500/30 bg-red-950/10 shadow-[0_0_20px_rgba(239,68,68,0.08)]"
+          : displayStatus === "upcoming"
+            ? "border-emerald-500/20 bg-[#09090b]/80 shadow-[0_0_20px_rgba(16,185,129,0.04)]"
+            : "border-zinc-800 bg-[#09090b]/40 text-zinc-400"
+      }`}
+    >
+      <div className={`absolute inset-0 bg-gradient-to-r pointer-events-none ${
+        displayStatus === "live"
+          ? "from-red-500/5 to-transparent"
+          : displayStatus === "upcoming"
+            ? "from-emerald-500/5 to-transparent"
+            : "from-zinc-500/5 to-transparent"
+      }`} />
+
+      <div className="relative flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 z-10">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`px-2 py-0.5 rounded text-[9px] font-black tracking-widest font-mono uppercase border ${
+              displayStatus === "live"
+                ? "bg-red-500/10 text-red-400 border-red-500/20 animate-pulse"
+                : displayStatus === "upcoming"
+                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/25"
+                  : "bg-zinc-800 text-zinc-500 border-zinc-700/50"
+            }`}>
+              {displayStatus === "live" ? trans.live : displayStatus === "upcoming" ? trans.upcoming : trans.concluded}
+            </span>
+            <span className="text-[10px] text-zinc-500 font-mono tracking-wider uppercase">
+              {locale === "es" ? "Partido 103" : locale === "fr" ? "Match 103" : "Match 103"}
+            </span>
+          </div>
+
+          <div>
+            <h4 className="text-xs font-black tracking-wider text-zinc-400 uppercase font-sans mb-0.5">
+              {trans.title}
+            </h4>
+            <p className="text-sm font-black text-white tracking-wide">
+              {trans.teams}
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-zinc-500 font-mono">
+            <span className="flex items-center gap-1">
+              <Clock className="w-3.5 h-3.5 text-zinc-500" /> {trans.date}
+            </span>
+            <span className="text-zinc-700">•</span>
+            <span className="flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-zinc-500" /> {trans.stadium}
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center md:justify-end gap-3 min-w-[200px]">
+          {displayStatus === "upcoming" && (
+            <div className="p-3 px-4 rounded-xl bg-zinc-950/80 border border-zinc-800/60 w-full md:w-auto text-center md:text-right">
+              <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-mono mb-0.5">
+                {locale === "es" ? "CUENTA REGRESIVA" : locale === "fr" ? "REBOURS" : "KICKOFF COUNTDOWN"}
+              </div>
+              <div className="text-base font-black text-emerald-400 font-mono tracking-wider">
+                {countdownString}
+              </div>
+            </div>
+          )}
+
+          {displayStatus === "live" && (
+            <div className="p-3 px-4 rounded-xl bg-zinc-950/80 border border-zinc-800/60 w-full md:w-auto flex items-center justify-between md:justify-end gap-5">
+              <div className="flex flex-col">
+                <span className="text-[9px] font-bold text-red-500 uppercase tracking-widest font-mono mb-0.5 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping"></span> {trans.live}
+                </span>
+                <span className="text-xs font-mono text-zinc-400">
+                  {trans.minute}: <strong className="text-white font-black">{liveMinuteText}</strong>
+                </span>
+              </div>
+              <div className="text-xl font-black text-white font-mono tracking-widest bg-zinc-900 border border-zinc-800 px-3 py-1 rounded-lg">
+                {liveScoreText}
+              </div>
+            </div>
+          )}
+
+          {displayStatus === "concluded" && (
+            <div className="p-3 px-4 rounded-xl bg-zinc-950/40 border border-zinc-900/60 w-full md:w-auto text-center md:text-right">
+              <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest font-mono mb-0.5">
+                {locale === "es" ? "PARTIDO CONCLUIDO" : locale === "fr" ? "MATCH TERMINÉ" : "MATCH CONCLUDED"}
+              </div>
+              <div className="text-xs font-bold text-zinc-500 font-mono">
+                {trans.concludedWinner}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export interface Stadium {
+  id: string;
+  name: string;
+  city?: string;
+  lat?: number;
+  lng?: number;
+  capacity?: string;
+}
+
+export interface CurrentUser {
+  uid: string;
+  displayName?: string | null;
+  firstName?: string;
+  lastName?: string;
+  email?: string | null;
+  phoneNumber?: string;
+  age?: number | string;
+  password?: string;
+  photoURL?: string | null;
+  role?: string;
+}
 
 interface DashboardWrapperProps {
   locale: "en" | "es" | "fr" | "de" | "pt" | "it";
@@ -15,16 +269,16 @@ interface DashboardWrapperProps {
   globalEmergencyOverride: string | null;
   setGlobalEmergencyOverride: (msg: string | null) => void;
   sessionId: string;
-  t: any; // Translation object
+  t: Record<string, any>; // Translation object with string keys
   selectedStadium: string;
   setSelectedStadium: (s: string) => void;
   findNearestStadium: () => void;
   findingNearest: boolean;
-  stadiums: any[];
+  stadiums: Stadium[];
   wsConnected?: boolean;
   handleLogout: () => void;
-  currentUser?: any;
-  onUpdateProfile?: (updatedUser: any) => void;
+  currentUser?: CurrentUser;
+  onUpdateProfile?: (updatedUser: CurrentUser) => void;
   liveMatchEvents?: { id: string; team: string; type: string; text: string; time: string; timestamp: string }[];
 }
 
@@ -579,37 +833,10 @@ export function DashboardWrapper({
             </div>
           )}
 
-          {/* Children Dashboard View */}
-          {liveMatchEvents && liveMatchEvents.length > 0 && (
-            <div id="fifa-live-match-ticker" className="p-4 bg-[#18181b]/60 border border-emerald-500/20 hover:border-emerald-500/40 rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 transition-all duration-300 shadow-[0_4px_20px_rgba(16,185,129,0.05)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.1)]">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-400 font-bold border border-emerald-500/20 shrink-0 text-base animate-pulse">
-                  ⚽
-                </div>
-                <div>
-                  <h4 className="text-[11px] font-mono font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
-                    <span>FIFA 2026 Live Match Ticker</span>
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping"></span>
-                    <span className="text-[9px] text-zinc-500 font-normal normal-case">Updates in real-time</span>
-                  </h4>
-                  <p className="text-xs text-white font-semibold mt-0.5 animate-fadeIn">
-                    {liveMatchEvents[0].text} <span className="text-emerald-400 ml-1.5 font-mono">[{liveMatchEvents[0].time}]</span>
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 border-t border-zinc-800/20 md:border-t-0 pt-2 md:pt-0">
-                <span className="text-[10px] text-zinc-500 font-mono hidden md:inline">Recent Events:</span>
-                <div className="flex gap-1.5 overflow-x-auto py-1 max-w-[280px]">
-                  {liveMatchEvents.slice(1, 4).map((evt) => (
-                    <span key={evt.id} className="px-2 py-0.5 bg-zinc-900 border border-zinc-800 rounded text-[9px] text-zinc-400 font-mono whitespace-nowrap shrink-0" title={evt.text}>
-                      {evt.type} ({evt.time})
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Live Match Details Banner (Third Place Play-off - July 17, 12:30 PM) */}
+          <ThirdPlacePlayoffBanner locale={locale} />
 
+          {/* Children Dashboard View */}
           {children}
         </main>
       </div>

@@ -541,9 +541,9 @@ export default function App() {
     { id: "m2", date: "July 12, 2026", time: "17:00", match: "Norway vs England", venue: "Miami", status: "Complete", density: "High", staffing: "Optimal" },
     { id: "m3", date: "July 12, 2026", time: "19:00", match: "Argentina vs Switzerland", venue: "Kansas City", status: "Complete", density: "High", staffing: "Optimal" },
     { id: "m4", date: "July 15, 2026", time: "00:30", match: "France vs Spain (0 - 2)", venue: "Dallas", status: "Complete", density: "Extreme", staffing: "Optimal" },
-    { id: "m5", date: "July 16, 2026", time: "00:30", match: "England vs Argentina", venue: "Atlanta", status: "Scheduled", density: "Extreme", staffing: "Surge Required" },
-    { id: "m6", date: "July 19, 2026", time: "02:30", match: "Third Place Play-off: France vs Loser of Match 102", venue: "Miami", status: "Scheduled", density: "High", staffing: "Surge Required" },
-    { id: "m7", date: "July 20, 2026", time: "00:30", match: "FIFA WC Final: Spain vs Winner of Match 102", venue: "New Jersey", status: "Scheduled", density: "Extreme", staffing: "Surge Required" },
+    { id: "m5", date: "July 16, 2026", time: "00:30", match: "England vs Argentina (1 - 2)", venue: "Atlanta", status: "Complete", density: "Extreme", staffing: "Optimal" },
+    { id: "m6", date: "July 19, 2026", time: "02:30", match: "Third Place Play-off: France vs England", venue: "Miami", status: "Scheduled", density: "High", staffing: "Surge Required" },
+    { id: "m7", date: "July 20, 2026", time: "00:30", match: "FIFA WC Final: Spain vs Argentina", venue: "New Jersey", status: "Scheduled", density: "Extreme", staffing: "Surge Required" },
     { id: "m8", date: "July 14, 2026", time: "21:00", match: "Brazil vs Italy", venue: "Mexico City", status: "Scheduled", density: "Extreme", staffing: "Surge Required" },
     { id: "m9", date: "July 08, 2026", time: "19:00", match: "Mexico vs Colombia", venue: "Mexico City", status: "Complete", density: "High", staffing: "Optimal" },
     { id: "m10", date: "July 08, 2026", time: "18:00", match: "Canada vs Portugal", venue: "Vancouver", status: "Scheduled", density: "High", staffing: "Optimal" },
@@ -658,13 +658,13 @@ export default function App() {
     const liveDates = [15, 16, 19, 20];
     const hasLiveMatchToday = isJuly && liveDates.includes(date);
 
-    let defaultMatch = { score: "0 - 2", minute: 90, home: "FRA", away: "ESP", status: "Concluded", matchName: "Match 101" };
+    let defaultMatch = { score: "0 - 0", minute: 0, home: "FRA", away: "ESP", status: "Scheduled", matchName: "Match 101" };
 
     if (hasLiveMatchToday) {
-      if (date === 15) defaultMatch = { score: "0 - 2", minute: 90, home: "FRA", away: "ESP", status: "Concluded", matchName: "Match 101" };
-      else if (date === 16) defaultMatch = { score: "0 - 0", minute: 1, home: "ENG", away: "ARG", status: "Live", matchName: "Match 102" };
+      if (date === 15) defaultMatch = { score: "0 - 2", minute: 90, home: "FRA", away: "ESP", status: "FT", matchName: "Match 101" };
+      else if (date === 16) defaultMatch = { score: "1 - 2", minute: 90, home: "ENG", away: "ARG", status: "FT", matchName: "Match 102" };
       else if (date === 19) defaultMatch = { score: "0 - 0", minute: 1, home: "FRA", away: "ENG", status: "Live", matchName: "Third Place Play-off" };
-      else if (date === 20) defaultMatch = { score: "0 - 0", minute: 1, home: "ESP", away: "ENG", status: "Live", matchName: "Final" };
+      else if (date === 20) defaultMatch = { score: "0 - 0", minute: 1, home: "ESP", away: "ARG", status: "Live", matchName: "Final" };
     }
 
     const saved = localStorage.getItem("stadiumIq_liveMatch");
@@ -689,7 +689,7 @@ export default function App() {
     const hasLiveMatchToday = isJuly && liveDates.includes(date);
 
     if (!hasLiveMatchToday) {
-      setLiveMatchData({ score: "0 - 2", minute: 90, home: "FRA", away: "ESP", status: "Concluded", matchName: "Match 101" });
+      setLiveMatchData({ score: "0 - 0", minute: 0, home: "FRA", away: "ESP", status: "Scheduled", matchName: "Match 101" });
       localStorage.removeItem("stadiumIq_liveMatch");
     }
   }, []);
@@ -2494,7 +2494,7 @@ export default function App() {
       const detailsMap: Record<string, { match: string; teams: string; date: string; gate: string; section: string; venue: string }> = {
         st_sofi: {
           match: "MATCH 104 - GRAND FINAL",
-          teams: "Spain vs Winner of Match 102",
+          teams: "Spain vs Argentina",
           date: "JULY 20, 2026 • 20:00",
           gate: "GATE A",
           section: "SEC 112",
@@ -2502,7 +2502,7 @@ export default function App() {
         },
         st_metlife: {
           match: "MATCH 104 - GRAND FINAL",
-          teams: "Spain vs Winner of Match 102",
+          teams: "Spain vs Argentina",
           date: "JULY 20, 2026 • 20:00",
           gate: "GATE B",
           section: "SEC 104",
@@ -2637,40 +2637,65 @@ export default function App() {
           </div>
 
           {/* Matchday Promo & Coupon Hub */}
-          <div className={`p-4 sm:p-5 rounded-2xl border ${accessibilityMode ? "border-white bg-black text-white" : "border-[#27272a] bg-[#09090b] shadow-lg"} flex flex-col justify-between shrink-0`}>
+          <div className={`p-4 sm:p-5 rounded-2xl border ${accessibilityMode ? "border-white bg-black text-white" : "border-[#27272a] bg-[#09090b] shadow-lg"} flex flex-col justify-between`}>
             <div className="flex items-center justify-between border-b border-[#27272a] pb-2 sm:pb-3">
               <h3 className="font-bold text-xs tracking-wider uppercase text-white flex items-center gap-1.5">
-                <Ticket className="w-4 h-4 text-[#22c55e]" /> Matchday Promo Hub
+                <Trophy className="w-4 h-4 text-amber-400" /> {locale === "es" ? "Centro de Promociones" : locale === "fr" ? "Centre de Code Promo" : "Matchday Promo & Coupon Hub"}
               </h3>
-              <span className="text-[9px] font-mono text-emerald-400 font-bold bg-emerald-400/10 px-2 py-0.5 rounded animate-pulse">ACTIVE OFFER</span>
+              <span className="text-[9px] font-mono text-[#71717a] uppercase">{locale === "es" ? "RECOMPENSAS" : locale === "fr" ? "RECOMPENSES" : "WC26 REWARDS"}</span>
             </div>
-            
-            <div className="mt-3 space-y-3">
-              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex flex-col gap-2 relative overflow-hidden">
-                <div className="absolute -right-6 -bottom-6 opacity-10 rotate-12">
-                  <Trophy className="w-20 h-20 text-emerald-400" />
+
+            <div className="py-3 space-y-3">
+              <p className="text-[11px] text-zinc-400 leading-relaxed">
+                {locale === "es" 
+                  ? "Utiliza códigos de promoción oficiales para reclamar descuentos en comida, bebidas y recuerdos dentro del estadio SoFi." 
+                  : locale === "fr" 
+                    ? "Utilisez les codes promotionnels officiels pour bénéficier de réductions sur la nourriture et les souvenirs au stade." 
+                    : "Unlock exclusive stadium privileges. Copy or apply official tournament promo codes to receive immediate savings on concessions and stadium gear."}
+              </p>
+
+              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 font-bold text-xs">
+                    %
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-white tracking-wide uppercase">SPAIN_FINAL26</p>
+                    <p className="text-[9px] font-mono text-zinc-500">{locale === "es" ? "20% DE DESCUENTO EN TIENDA" : locale === "fr" ? "20% DE RABAIS CONCESSIONS" : "20% DISCOUNT ON ALL ORDERS"}</p>
+                  </div>
                 </div>
-                <div>
-                  <span className="text-[8px] font-mono text-emerald-400 font-bold uppercase tracking-wider bg-emerald-500/20 px-2 py-0.5 rounded">Spain Final Qualifier Promo</span>
-                  <h4 className="text-xs font-bold text-white mt-1.5 uppercase">Claim 20% Off Concessions & Gear!</h4>
-                  <p className="text-[10px] text-zinc-400 leading-relaxed mt-1">
-                    Spain has officially qualified for the Grand Final! Grab snacks or a jersey with our exclusive matchday coupon.
-                  </p>
-                </div>
-                <div className="flex items-center justify-between bg-zinc-950 p-2 rounded-lg border border-zinc-800 mt-1">
-                  <span className="text-xs font-mono font-bold text-zinc-300">SPAIN_FINAL26</span>
+
+                <div className="flex items-center gap-2 w-full sm:w-auto font-mono">
                   <button
                     onClick={() => {
                       navigator.clipboard.writeText("SPAIN_FINAL26");
                       setCopiedPromo(true);
                       setTimeout(() => setCopiedPromo(false), 2000);
                     }}
-                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-[9px] uppercase font-mono rounded transition-colors active:scale-95"
+                    className="flex-1 sm:flex-none px-2.5 py-1.5 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-[10px] font-bold text-zinc-300 transition-all uppercase"
                   >
-                    {copiedPromo ? "Copied!" : "Copy"}
+                    {copiedPromo ? (locale === "es" ? "COPIADO" : "COPIED!") : (locale === "es" ? "COPIAR" : "COPY CODE")}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setAppliedPromo("SPAIN_FINAL26");
+                      setActiveDiscount(0.20);
+                      setPromoSuccessMessage(locale === "es" ? "¡Código SPAIN_FINAL26 aplicado! 20% de descuento activado." : "Promo code SPAIN_FINAL26 applied! 20% discount active.");
+                      setPromoError(null);
+                    }}
+                    disabled={appliedPromo === "SPAIN_FINAL26"}
+                    className="flex-1 sm:flex-none px-2.5 py-1.5 rounded bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-950 disabled:text-emerald-500 text-white font-black text-[10px] tracking-wide transition-all uppercase"
+                  >
+                    {appliedPromo === "SPAIN_FINAL26" ? (locale === "es" ? "APLICADO" : "APPLIED") : (locale === "es" ? "APLICAR" : "APPLY")}
                   </button>
                 </div>
               </div>
+
+              {promoSuccessMessage && (
+                <p className="text-[10px] font-mono text-emerald-400 font-bold animate-fadeIn">
+                  ✓ {promoSuccessMessage}
+                </p>
+              )}
             </div>
           </div>
 
@@ -2685,7 +2710,7 @@ export default function App() {
 
             {!orderSubmitted ? (
               <>
-                <div className="space-y-2 overflow-y-auto pr-1 flex-1 min-h-0 py-2 max-h-[220px]">
+                <div className="space-y-2 overflow-y-auto pr-1 flex-1 min-h-0 py-2">
                   {[
                     { name: "🌭 Classic Stadium Hotdog", price: 8.50 },
                     { name: "🥤 Commemorative FIFA Cup", price: 6.00 },
@@ -2737,67 +2762,20 @@ export default function App() {
                 </div>
 
                 <div className="border-t border-[#27272a] pt-3 flex flex-col gap-2">
-                  {/* Coupon Code Application Field */}
-                  <div className="border-b border-[#27272a]/40 pb-2.5 mb-1">
-                    <div className="flex gap-1.5 items-center">
-                      <input
-                        type="text"
-                        value={promoCodeInput}
-                        onChange={(e) => {
-                          setPromoCodeInput(e.target.value);
-                          setPromoError(null);
-                          setPromoSuccessMessage(null);
-                        }}
-                        placeholder="ENTER PROMO CODE"
-                        className="flex-1 min-w-0 bg-black text-white border border-[#27272a] px-2.5 py-1.5 rounded-lg text-[10px] font-mono focus:outline-none focus:border-emerald-500 uppercase"
-                      />
-                      <button
-                        onClick={() => {
-                          const code = promoCodeInput.trim().toUpperCase();
-                          if (code === "SPAIN_FINAL26") {
-                            setActiveDiscount(0.20);
-                            setAppliedPromo("SPAIN_FINAL26");
-                            setPromoSuccessMessage("20% DISCOUNT APPLIED SUCCESSFULLY!");
-                            setPromoError(null);
-                          } else if (code === "") {
-                            setPromoError("PLEASE ENTER A CODE");
-                            setPromoSuccessMessage(null);
-                          } else {
-                            setPromoError("INVALID COUPON CODE");
-                            setPromoSuccessMessage(null);
-                          }
-                        }}
-                        className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-[9px] uppercase rounded-lg transition-all"
-                      >
-                        APPLY
-                      </button>
-                    </div>
-                    {promoError && (
-                      <p className="text-[9px] text-red-400 font-mono mt-1 uppercase">⚠️ {promoError}</p>
-                    )}
-                    {promoSuccessMessage && (
-                      <p className="text-[9px] text-emerald-400 font-mono mt-1 uppercase">🎉 {promoSuccessMessage}</p>
-                    )}
-                  </div>
-
-                  <div className="flex justify-between items-center text-[10px] font-mono text-zinc-500">
-                    <span className="uppercase">SUBTOTAL:</span>
-                    <span>
-                      ${cart.reduce((sum, c) => sum + (c.price * c.quantity), 0).toFixed(2)}
-                    </span>
-                  </div>
-
-                  {activeDiscount > 0 && (
-                    <div className="flex justify-between items-center text-[10px] font-mono text-emerald-400">
-                      <span className="uppercase font-bold">PROMO DISCOUNT (20%):</span>
-                      <span>
-                        -${(cart.reduce((sum, c) => sum + (c.price * c.quantity), 0) * activeDiscount).toFixed(2)}
-                      </span>
+                  {appliedPromo && (
+                    <div className="flex justify-between items-center text-[10px] font-mono text-zinc-400">
+                      <span>{locale === "es" ? "SUBTOTAL:" : "SUBTOTAL:"}</span>
+                      <span>${cart.reduce((sum, c) => sum + (c.price * c.quantity), 0).toFixed(2)}</span>
                     </div>
                   )}
-
+                  {appliedPromo && (
+                    <div className="flex justify-between items-center text-[10px] font-mono text-emerald-400 font-bold animate-fadeIn">
+                      <span>{locale === "es" ? "DESC (20% SPAIN_FINAL26):" : "DISC (20% SPAIN_FINAL26):"}</span>
+                      <span>-${(cart.reduce((sum, c) => sum + (c.price * c.quantity), 0) * 0.20).toFixed(2)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-center text-[11px] font-mono">
-                    <span className="text-zinc-300 font-bold uppercase">FINAL TOTAL:</span>
+                    <span className="text-zinc-500 uppercase">{appliedPromo ? (locale === "es" ? "TOTAL NETO:" : "TOTAL NET:") : (locale === "es" ? "TOTAL:" : "TOTAL:")}</span>
                     <span className="text-[#22c55e] font-black text-sm">
                       ${(cart.reduce((sum, c) => sum + (c.price * c.quantity), 0) * (1 - activeDiscount)).toFixed(2)}
                     </span>
@@ -4979,56 +4957,6 @@ export default function App() {
         </div>
       ) : (
         <>
-          {/* Global Live Match Banner */}
-          {(liveMatchData.status === "Live" || liveMatchData.status === "Concluded" || liveMatchData.status === "Complete" || liveMatchData.status === "FT") && (
-            <div className="mb-6 w-full rounded-2xl border border-[#27272a] bg-[#09090b]/80 backdrop-blur-md shadow-xl flex flex-col md:flex-row md:items-center justify-between p-4 overflow-hidden relative gap-4">
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-transparent pointer-events-none" />
-              <div className="flex items-center gap-4 z-10">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center shadow-inner shrink-0 ${
-                  liveMatchData.status === "Live" 
-                    ? "bg-rose-500/10 border border-rose-500/20 text-rose-500 animate-pulse" 
-                    : "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-                }`}>
-                  {liveMatchData.status === "Live" ? (
-                    <Activity className="w-6 h-6 animate-pulse" />
-                  ) : (
-                    <Trophy className="w-6 h-6 text-yellow-400 animate-bounce" style={{ animationDuration: '3s' }} />
-                  )}
-                </div>
-                <div className="flex flex-col">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className={`px-2 py-0.5 text-[10px] font-bold rounded border uppercase tracking-widest ${
-                      liveMatchData.status === "Live"
-                        ? "bg-rose-500/10 text-rose-400 border-rose-500/20 animate-pulse"
-                        : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                    }`}>
-                      {liveMatchData.status === "Live" ? "LIVE" : "CONCLUDED"}
-                    </span>
-                    <span className="text-sm font-black text-white uppercase tracking-wider">
-                      {liveMatchData.home} {liveMatchData.score} {liveMatchData.away}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-[10px] font-mono text-zinc-400">
-                    {liveMatchData.status === "Live" ? (
-                      <span className="text-emerald-400 font-bold tracking-wider">Minute: {liveMatchData.minute}'</span>
-                    ) : (
-                      <span className="text-emerald-400 font-bold tracking-wider">FT: Spain advances to the Grand Final!</span>
-                    )}
-                    <span className="hidden sm:inline w-1 h-1 rounded-full bg-zinc-700" />
-                    <span>
-                       {selectedStadium === "st_sofi" ? "Los Angeles (SoFi)" : selectedStadium === "st_metlife" ? "New Jersey (MetLife)" : selectedStadium === "st_mercedes" ? "Atlanta (MBS)" : selectedStadium === "st_azteca" ? "Mexico City (Azteca)" : "Vancouver (BC Place)"}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="z-10 flex flex-col justify-center text-left md:text-right font-mono shrink-0">
-                <span className="text-[9px] text-[#71717a] font-bold uppercase tracking-wider">Upcoming Spotlight</span>
-                <span className="text-xs text-white font-black uppercase mt-0.5">🏆 Match 104: Spain vs Winner of Match 102</span>
-                <span className="text-[9px] text-emerald-400 font-bold uppercase mt-0.5">July 20, 2026 @ MetLife Stadium</span>
-              </div>
-            </div>
-          )}
           <AnimatePresence mode="wait">
           {persona === "fan" && (
             <motion.div

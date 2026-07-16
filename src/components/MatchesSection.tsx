@@ -95,7 +95,7 @@ export function MatchesSection({ selectedStadium, stadiums, liveMatchEvents = []
     { id: "m67", teams: "Panama vs England", date: "27 June 2026", time: "22:00", venue: "New Jersey", status: "past", result: "0 - 2" },
     { id: "m77", teams: "France vs Sweden", date: "30 June 2026", time: "33:00", venue: "New Jersey", status: "past", result: "3 - 0" },
     { id: "m91", teams: "Brazil vs Norway", date: "5 July 2026", time: "12:00", venue: "New Jersey", status: "past", result: "1 - 2" },
-    { id: "m104", teams: "Spain vs Winner of Match 102", date: "20 July 2026", time: "00:30", venue: "New Jersey", status: "upcoming" },
+    { id: "m104", teams: "Spain vs Argentina", date: "20 July 2026", time: "00:30", venue: "New Jersey", status: "upcoming" },
 
     // --- ATLANTA (st_mercedes / st_mbs) ---
     { id: "m14", teams: "Spain vs Cabo Verde", date: "15 June 2026", time: "26:00", venue: "Atlanta", status: "past", result: "0 - 0" },
@@ -105,7 +105,7 @@ export function MatchesSection({ selectedStadium, stadiums, liveMatchEvents = []
     { id: "m72", teams: "Congo DR vs Uzbekistan", date: "27 June 2026", time: "31:00", venue: "Atlanta", status: "past", result: "3 - 1" },
     { id: "m80", teams: "England vs Congo DR", date: "1 July 2026", time: "32:00", venue: "Atlanta", status: "past", result: "2 - 1" },
     { id: "m95", teams: "Argentina vs Egypt", date: "7 July 2026", time: "12:00", venue: "Atlanta", status: "past", result: "3 - 2" },
-    { id: "m102", teams: "England vs Argentina", date: "16 July 2026", time: "00:30", venue: "Atlanta", status: "upcoming" },
+    { id: "m102", teams: "England vs Argentina", date: "16 July 2026", time: "00:30", venue: "Atlanta", status: "past", result: "1 - 2" },
 
     // --- MEXICO CITY (st_azteca) ---
     { id: "m1", teams: "Mexico vs South Africa", date: "12 June 2026", time: "23:00", venue: "Mexico City", status: "past", result: "2 - 0" },
@@ -141,7 +141,7 @@ export function MatchesSection({ selectedStadium, stadiums, liveMatchEvents = []
     { id: "m71", teams: "Colombia vs Portugal", date: "27 June 2026", time: "30:00", venue: "Miami", status: "past", result: "0 - 0" },
     { id: "m86", teams: "Argentina vs Cabo Verde", date: "3 July 2026", time: "28:00", venue: "Miami", status: "past", result: "3 - 2 (a.e.t)" },
     { id: "m99", teams: "Norway vs England", date: "12 July 2026", time: "17:00", venue: "Miami", status: "past", result: "1 - 2 (a.e.t)" },
-    { id: "m103", teams: "France vs Loser of Match 102", date: "19 July 2026", time: "02:30", venue: "Miami", status: "upcoming" },
+    { id: "m103", teams: "France vs England", date: "19 July 2026", time: "02:30", venue: "Miami", status: "upcoming" },
 
     // --- BOSTON (st_gillette) ---
     { id: "m5", teams: "Haiti vs Scotland", date: "14 June 2026", time: "22:00", venue: "Boston", status: "past", result: "0 - 1" },
