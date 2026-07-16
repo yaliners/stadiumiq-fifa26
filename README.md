@@ -5,7 +5,7 @@
 ![WCAG AA Compliant](https://img.shields.io/badge/WCAG-AA%20Compliant-success)
 ![Powered by Gemini](https://img.shields.io/badge/AI-Google%20Gemini-blueviolet)
 
-**Live App:** [[https://stadiumiq-operations-center.ai.studio](https://stadiumiq-operations-center.ai.studio)](https://ais-pre-3ttmfiqbavdur3t6ls3www-506726946468.asia-southeast1.run.app)
+**Live App:** (https://ais-pre-3ttmfiqbavdur3t6ls3www-506726946468.asia-southeast1.run.app)
 
 **PromptWars Virtual — Challenge 4 Submission**
 
