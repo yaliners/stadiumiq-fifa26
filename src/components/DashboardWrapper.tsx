@@ -4,7 +4,7 @@ import { db, auth } from "../lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { upcomingMatches } from "../data/matches";
 
-const bannerTranslations = {
+export const bannerTranslations = {
   en: {
     title: "🥉 FIFA WORLD CUP 2026 — THIRD PLACE PLAY-OFF",
     teams: "🇫🇷 France vs 🏴󠁧󠁢󠁥󠁮󠁧󠁿 England",

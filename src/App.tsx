@@ -542,7 +542,7 @@ export default function App() {
     { id: "m3", date: "July 12, 2026", time: "19:00", match: "Argentina vs Switzerland", venue: "Kansas City", status: "Complete", density: "High", staffing: "Optimal" },
     { id: "m4", date: "July 15, 2026", time: "00:30", match: "France vs Spain (0 - 2)", venue: "Dallas", status: "Complete", density: "Extreme", staffing: "Optimal" },
     { id: "m5", date: "July 16, 2026", time: "00:30", match: "England vs Argentina (1 - 2)", venue: "Atlanta", status: "Complete", density: "Extreme", staffing: "Optimal" },
-    { id: "m6", date: "July 19, 2026", time: "02:30", match: "Third Place Play-off: France vs England", venue: "Miami", status: "Scheduled", density: "High", staffing: "Surge Required" },
+    { id: "m6", date: "July 17, 2026", time: "12:30", match: "Third Place Play-off: France vs England", venue: "Miami", status: "Scheduled", density: "High", staffing: "Surge Required" },
     { id: "m7", date: "July 20, 2026", time: "00:30", match: "FIFA WC Final: Spain vs Argentina", venue: "New Jersey", status: "Scheduled", density: "Extreme", staffing: "Surge Required" },
     { id: "m8", date: "July 14, 2026", time: "21:00", match: "Brazil vs Italy", venue: "Mexico City", status: "Scheduled", density: "Extreme", staffing: "Surge Required" },
     { id: "m9", date: "July 08, 2026", time: "19:00", match: "Mexico vs Colombia", venue: "Mexico City", status: "Complete", density: "High", staffing: "Optimal" },
@@ -655,7 +655,7 @@ export default function App() {
     const date = now.getDate();
     
     // Only these dates have live matches
-    const liveDates = [15, 16, 19, 20];
+    const liveDates = [15, 16, 17, 20];
     const hasLiveMatchToday = isJuly && liveDates.includes(date);
 
     let defaultMatch = { score: "0 - 0", minute: 0, home: "FRA", away: "ESP", status: "Scheduled", matchName: "Match 101" };
@@ -663,7 +663,7 @@ export default function App() {
     if (hasLiveMatchToday) {
       if (date === 15) defaultMatch = { score: "0 - 2", minute: 90, home: "FRA", away: "ESP", status: "FT", matchName: "Match 101" };
       else if (date === 16) defaultMatch = { score: "1 - 2", minute: 90, home: "ENG", away: "ARG", status: "FT", matchName: "Match 102" };
-      else if (date === 19) defaultMatch = { score: "0 - 0", minute: 1, home: "FRA", away: "ENG", status: "Live", matchName: "Third Place Play-off" };
+      else if (date === 17) defaultMatch = { score: "0 - 0", minute: 1, home: "FRA", away: "ENG", status: "Live", matchName: "Third Place Play-off" };
       else if (date === 20) defaultMatch = { score: "0 - 0", minute: 1, home: "ESP", away: "ARG", status: "Live", matchName: "Final" };
     }
 
@@ -680,12 +680,12 @@ export default function App() {
     return defaultMatch;
   });
 
-  // Auto-reset live match if today is not an official live match date (July 13, 14, 17, 18)
+  // Auto-reset live match if today is not an official live match date (July 13, 14, 18)
   useEffect(() => {
     const now = new Date();
     const isJuly = now.getMonth() === 6 && now.getFullYear() === 2026;
     const date = now.getDate();
-    const liveDates = [15, 16, 19, 20];
+    const liveDates = [15, 16, 17, 20];
     const hasLiveMatchToday = isJuly && liveDates.includes(date);
 
     if (!hasLiveMatchToday) {

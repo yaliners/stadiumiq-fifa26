@@ -141,7 +141,7 @@ export function MatchesSection({ selectedStadium, stadiums, liveMatchEvents = []
     { id: "m71", teams: "Colombia vs Portugal", date: "27 June 2026", time: "30:00", venue: "Miami", status: "past", result: "0 - 0" },
     { id: "m86", teams: "Argentina vs Cabo Verde", date: "3 July 2026", time: "28:00", venue: "Miami", status: "past", result: "3 - 2 (a.e.t)" },
     { id: "m99", teams: "Norway vs England", date: "12 July 2026", time: "17:00", venue: "Miami", status: "past", result: "1 - 2 (a.e.t)" },
-    { id: "m103", teams: "France vs England", date: "19 July 2026", time: "02:30", venue: "Miami", status: "upcoming" },
+    { id: "m103", teams: "France vs England", date: "17 July 2026", time: "12:30", venue: "Miami", status: "upcoming" },
 
     // --- BOSTON (st_gillette) ---
     { id: "m5", teams: "Haiti vs Scotland", date: "14 June 2026", time: "22:00", venue: "Boston", status: "past", result: "0 - 1" },
