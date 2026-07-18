@@ -25,4 +25,14 @@ describe("Banner Translations", () => {
     expect(bannerTranslations.fr.teams).toContain("France vs");
     expect(bannerTranslations.fr.teams).toContain("Angleterre");
   });
+
+  it("should have correct schedule date and score information in translations", () => {
+    const requiredLangs = ["en", "es", "fr", "de", "pt", "it"] as const;
+    requiredLangs.forEach((lang) => {
+      const trans = bannerTranslations[lang];
+      expect(trans.date).toContain("17"); // July 17
+      expect(trans.stadium).toContain("Hard Rock Stadium");
+      expect(trans.concludedWinner).toContain("2-1");
+    });
+  });
 });

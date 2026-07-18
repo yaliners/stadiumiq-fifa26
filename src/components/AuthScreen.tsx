@@ -10,13 +10,6 @@ interface AuthScreenProps {
 }
 
 export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
-  // Direct, instant top-level redirection on mount to ensure no intermediate redirect warnings are shown
-  useEffect(() => {
-    if (window.location.hostname === "stadiumiq-operations-center.ai.studio") {
-      window.location.href = `https://stadiumiq-operations-center-646746347637.us-west1.run.app${window.location.search || ""}`;
-    }
-  }, []);
-
   const [step, setStep] = useState<"welcome" | "roles" | "login">("welcome");
   const [role, setRole] = useState<"staff" | "organizer" | "volunteer" | "fan" | "admin" | null>(null);
   const [error, setError] = useState("");
@@ -182,13 +175,6 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
 
   const handleGoogleLogin = async () => {
     setError("");
-
-    // If on the unauthorized proxy domain, automatically redirect to the authorized URL with a trigger param
-    if (window.location.hostname === "stadiumiq-operations-center.ai.studio") {
-      const targetUrl = `https://stadiumiq-operations-center-646746347637.us-west1.run.app/?triggerGoogleLogin=true&role=${role || "fan"}`;
-      window.location.href = targetUrl;
-      return;
-    }
 
     setLoading(true);
     try {
@@ -772,7 +758,7 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
                   <p className="text-xs font-bold text-emerald-400 mb-1.5">Please use the official URLs for Google Sign-In:</p>
                   <div className="flex flex-col gap-2">
                     <a 
-                      href="https://stadiumiq-operations-center-646746347637.us-west1.run.app" 
+                      href="https://ais-pre-3ttmfiqbavdur3t6ls3www-506726946468.asia-southeast1.run.app" 
                       target="_blank" 
                       rel="noopener noreferrer" 
                       className="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/40 text-emerald-300 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors border border-emerald-500/30"

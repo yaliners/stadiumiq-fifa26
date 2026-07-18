@@ -237,13 +237,13 @@ export async function seedDatabase(db: any): Promise<void> {
   
     // SEMIFINALS
     { id: "m_sf_1", stage: "Semifinals", home_team: "France", away_team: "Spain", datetime_utc: "2026-07-15T00:30:00Z", stadium_id: "st_att", status: "completed", home_score: 0, away_score: 2 },
-    { id: "m_sf_2", stage: "Semifinals", home_team: "England", away_team: "Argentina", datetime_utc: "2026-07-16T00:30:00Z", stadium_id: "st_mbs", status: "scheduled" },
+    { id: "m_sf_2", stage: "Semifinals", home_team: "England", away_team: "Argentina", datetime_utc: "2026-07-16T00:30:00Z", stadium_id: "st_mbs", status: "completed", home_score: 1, away_score: 2 },
 
     // THIRD PLACE MATCH
-    { id: "m_3rd", stage: "Third Place Match", home_team: "France", away_team: "Loser of SF 2", datetime_utc: "2026-07-18T21:00:00Z", stadium_id: "st_hardrock", status: "scheduled" },
+    { id: "m_3rd", stage: "Third Place Match", home_team: "France", away_team: "England", datetime_utc: "2026-07-17T12:30:00Z", stadium_id: "st_hardrock", status: "scheduled" },
 
     // FINAL MATCH
-    { id: "m_final", stage: "Final Match", home_team: "Spain", away_team: "Winner of SF 2", datetime_utc: "2026-07-19T19:00:00Z", stadium_id: "st_metlife", status: "scheduled" }
+    { id: "m_final", stage: "Final Match", home_team: "Spain", away_team: "Argentina", datetime_utc: "2026-07-20T00:30:00Z", stadium_id: "st_metlife", status: "scheduled" }
   ];
 
   for (const m of matches) {

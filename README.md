@@ -218,12 +218,14 @@ npm run start
 
 ## 🧪 High-Coverage Automated Testing
 
+StadiumIQ features a comprehensive multi-layered automated testing structure that verifies the behavior of both frontend components and server-side decision modules.
+
+### 1. Backend Decision Engine Integration Suite
+Run the 10-case automated test suite:
 ```bash
 npx tsx server/test_decision_engine.ts
 ```
-
-The test runner asserts ten distinct operational cases, all passing at time of submission:
-
+The test runner asserts ten distinct operational cases:
 1. **Schedule Classifier** — matches the schedule pattern and queries the DB for correct team/match data
 2. **Gate Density Classifier** — matches gate patterns and routes to the least congested gateway
 3. **Facilities Classifier** — resolves restrooms, ADA wheelchair assistance, and medical stations
@@ -234,6 +236,17 @@ The test runner asserts ten distinct operational cases, all passing at time of s
 8. **Multilingual Support Correctness** — verifies that schedule queries return accurate translated indicators for both Spanish (`es`) and French (`fr`) locales
 9. **Structured Conversation Session Memory** — asserts that memory session stores set, persist, and retrieve multi-turn user/model history structures correctly
 10. **Database Fallback & Error Resilience** — guarantees that unmatched or invalid queries still return friendly, helpful default schedule tables rather than blank or erroneous responses
+
+### 2. Unit Testing Suite (Vitest)
+Run the unit test suite:
+```bash
+npm run test
+```
+The unit test execution checks 15 distinct specifications across four test suites:
+* **`src/server_chat.test.ts`**: Verifies sanitization mechanics, character boundary limits, default locale fallbacks, and the asynchronous promise-timeout wrapper.
+* **`src/data/volunteerData.test.ts`**: Asserts correct coordinate values, SOS trigger classification categories, and specific metadata mappings for Sofi, MetLife, Mercedes, Azteca, and BC Place.
+* **`src/components/DashboardWrapper.test.ts`**: Verifies localized banner translations for match dates, stadiums, and conclusive score outcomes (Spain vs Argentina match on July 17).
+* **`src/data/matches.test.ts`**: Confirms upcoming match resolution, completed results mapping, and team list rosters.
 
 ---
 
@@ -253,10 +266,10 @@ StadiumIQ is built to WCAG AA contrast standards (4.5:1 ratio) across all displa
 Welcome to our **Build in Public** journey! In this iteration, StadiumIQ has transitioned from a structural hackathon submission into a highly contextualized, production-grade tournament management workspace.
 
 ### 🔄 Core Features & Key Enhancements
-In our first sprint, we focused on establishing robust, reliable, and immersive systems:
+In our latest sprints, we focused on establishing robust, reliable, and immersive systems:
 1. **Contextualized Matchday Hub & Live Banner:** We redesigned the entire dashboard experience from a generic template into a **Live Matchday Broadcast Console** centered fully around the beautiful game. Included a dedicated, real-time **Third Place Play-off Live Banner** directly below the main topbar that dynamically transitions between states (*Upcoming* countdown, *Live Now* with real-time minutes/score tickers, and *Concluded*) with complete multilingual translation support.
 2. **Operational T-Minus Countdown:** Added a dynamic, state-driven live countdown widget that auto-detects current time, filters out past matches, and tracks operational kickoff metrics (e.g. `LIVE NOW ⚽`, `Concluded 🏁`, or precise T-minus indicators) for upcoming fixtures.
-3. **Pristine Clean Type-Safety:** Refactored backend query handlers, cache signatures, and database parameter structures inside `server/db.ts` and `server/chat.ts` to ensure flawless production compilation and absolute immunity against type errors.
+3. **Pristine Clean Type-Safety & Lazy SDK Initialization:** Refactored backend query handlers, cache signatures, and database parameter structures inside `server/db.ts` and `server/chat.ts` to ensure flawless production compilation and absolute immunity against type errors. Additionally, **implemented lazy-initialization for the GoogleGenAI client SDK** (`getAiClient()`), protecting the server from boot-up or build-time crashes when the `GEMINI_API_KEY` is not present in the environment.
 4. **Seamless Integration & Real-Time Bracket Resolution:** Built a fully operational Dual-Engine classification model (under 10ms deterministic matching for standard queries with smooth fallback to Gemini 3.5), connected directly to an SQLite backend database. Resolved tournament fixtures based on real-time match results: recorded the **England 1 - 2 Argentina** result on July 16, 2026, and propagated **Argentina** as the Grand Finalist vs Spain and **England** as the Third Place Play-off competitor vs France.
 
 ### 📈 How Our Prompts Evolved

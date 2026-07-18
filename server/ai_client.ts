@@ -1,10 +1,19 @@
 import { GoogleGenAI, Type, HarmCategory, HarmBlockThreshold } from "@google/genai";
 import { safeDbQuery, dbAll, dbGet } from "./db";
 
-// Initialize the Gemini SDK Client
-export const ai = new GoogleGenAI({
-  apiKey: process.env.GEMINI_API_KEY,
-});
+// Lazy initialize the Gemini SDK Client to avoid module-load crashes if API key is not present yet
+let aiInstance: GoogleGenAI | null = null;
+
+export function getAiClient(): GoogleGenAI {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY environment variable is required");
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
+}
 
 // A simple in-memory sliding window rate limiter
 const requestTimes: number[] = [];
@@ -314,7 +323,7 @@ If you are uncertain or cannot answer the question based on database tools, set 
     loopCount++;
     console.log(`[Gemini Request] Calling ${model} (turn loop: ${loopCount})...`);
 
-    const response = await ai.models.generateContent({
+    const response = await getAiClient().models.generateContent({
       model,
       contents: currentTurnContents,
       config: {
