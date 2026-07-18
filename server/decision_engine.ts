@@ -1,4 +1,4 @@
-import { safeDbQuery, dbAll, dbGet } from "./db";
+import { safeDbQuery, dbAll } from "./db";
 
 export const PATTERNS = {
   schedule: /\bwhen\b.*\bvs\b|\bschedule\b|\bplaying\b/i,

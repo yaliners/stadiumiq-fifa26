@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Accessibility, Shield, Calendar, Users, Award, Settings, User, Heart, X, HelpCircle, MapPin, Clock, Mail, Globe, Palette, ShieldAlert, Info, Edit, Check, Eye, EyeOff, Share2, Clipboard, ExternalLink, Download, Laptop, Smartphone, Tablet } from "lucide-react";
+import { Accessibility, Shield, Calendar, Users, Award, Settings, User, X, HelpCircle, MapPin, Clock, Mail, Globe, Palette, ShieldAlert, Edit, Check, Eye, EyeOff, Share2, Clipboard, ExternalLink } from "lucide-react";
 import { db, auth } from "../lib/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { upcomingMatches } from "../data/matches";
@@ -303,10 +303,8 @@ export function DashboardWrapper({
   handleLogout,
   currentUser,
   onUpdateProfile,
-  liveMatchEvents
+  liveMatchEvents: _liveMatchEvents
 }: DashboardWrapperProps) {
-  const [loginModal, setLoginModal] = useState<{ isOpen: boolean; role: 'staff' | 'organizer' | 'volunteer' | 'admin' | null }>({ isOpen: false, role: null });
-  const [passcode, setPasscode] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   
   // Modals for Profile, Settings, About Us
@@ -505,9 +503,10 @@ export function DashboardWrapper({
         setIsEditing(false);
         setSaveSuccess(false);
       }, 1500);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error saving profile:", err);
-      setSaveError(err.message || "Failed to save profile. Please try again.");
+      const errorObj = err as Error;
+      setSaveError(errorObj.message || "Failed to save profile. Please try again.");
     } finally {
       setSaveLoading(false);
     }
@@ -516,17 +515,6 @@ export function DashboardWrapper({
   const handlePersonaClick = async (p: "staff" | "organizer" | "volunteer" | "fan" | "admin") => {
     if (p === persona) return;
     setPersona(p);
-  };
-
-  const allowedRoles = ["staff", "organizer", "volunteer", "fan", "admin"];
-
-  // Accent color classes mapping
-  const accentClasses = {
-    emerald: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20 hover:border-emerald-500/40",
-    purple: "text-purple-400 bg-purple-500/10 border-purple-500/20 hover:border-purple-500/40",
-    cyan: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20 hover:border-cyan-500/40",
-    amber: "text-amber-400 bg-amber-500/10 border-amber-500/20 hover:border-amber-500/40",
-    rose: "text-rose-400 bg-rose-500/10 border-rose-500/20 hover:border-rose-500/40",
   };
 
   const themeBgClass = accessibilityMode

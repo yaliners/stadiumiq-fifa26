@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { auth, db } from "./lib/firebase";
-import { GoogleAuthProvider, signInWithPopup, onAuthStateChanged, User, signOut, signInAnonymously } from "firebase/auth";
+import { onAuthStateChanged, signOut, signInAnonymously } from "firebase/auth";
 import { doc, getDoc, setDoc, collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { AuthScreen } from "./components/AuthScreen";
 import { AdminDashboard } from "./components/AdminDashboard";
+import { StadiumData, MatchData, GateData, Message, AlertData, LiveMatchData, MapFeature, WeatherData, StaffMember } from "./types";
 
 /**
  * ACCESSIBILITY AUDIT (WCAG AA COMPLIANT):
@@ -15,12 +16,6 @@ import { AdminDashboard } from "./components/AdminDashboard";
  */
 
 import { 
-  LineChart, 
-  Line, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
   ResponsiveContainer,
   AreaChart,
   Area
@@ -30,24 +25,12 @@ import {
   Send, 
   MessageSquare, 
   AlertTriangle, 
-  BookOpen, 
   Volume2, 
-  VolumeX, 
-  Globe, 
-  Accessibility, 
   RefreshCw, 
-  Activity, 
-  CornerDownRight, 
   ShieldAlert,
-  Info,
-  Award,
   Calendar,
   MapPin,
   Mic,
-  Square,
-  Pause,
-  Play,
-  StopCircle,
   X,
   Trash2,
   Copy,
@@ -55,30 +38,20 @@ import {
   ZoomIn,
   ZoomOut,
   Maximize2,
-  Cpu,
-  Bus,
-  CheckSquare,
   Plus,
   Minus,
-  Search,
   QrCode,
   ShoppingCart,
   Lock,
   Bell,
   Navigation,
-  LogOut,
-  ChevronDown,
-  UserCheck,
   Zap,
   Droplets,
-  Truck,
   Users,
   Radio,
-  WifiOff,
   Eye,
   EyeOff,
-  Trophy,
-  Ticket
+  Trophy
 } from "lucide-react";
 
 import { DashboardWrapper } from "./components/DashboardWrapper";
@@ -95,7 +68,7 @@ import it from "./locales/it.json";
 
 const locales: Record<string, any> = { en, es, fr, de, pt, it };
 
-function getTeamFlag(teamName: string) {
+export function getTeamFlag(teamName: string) {
   const flags: Record<string, string> = {
     "USA": "🇺🇸",
     "United States": "🇺🇸",
@@ -140,7 +113,7 @@ function getTeamFlag(teamName: string) {
   return flags[teamName] || "🏳️";
 }
 
-const uiTranslations = {
+export const uiTranslations = {
   en: {
     upcoming_matches: "Upcoming Matches Schedule",
     location: "Location",
@@ -283,29 +256,10 @@ const personaQuestions = {
   }
 };
 
-interface Message {
-  id: string;
-  sender: "user" | "stadiumiq";
-  text: string;
-  confidence?: "grounded" | "uncertain" | "general_knowledge";
-  source_type?: "decision_engine" | "gemini" | "fallback" | "timeout";
-  model_tier?: string;
-  isError?: boolean;
-  timestamp?: string;
-}
-
-interface Alert {
-  id: string;
-  stadium_id: string;
-  type: string;
-  message: string;
-  starts_at: string;
-  ends_at: string;
-  severity: "low" | "medium" | "high";
-}
+type Alert = AlertData;
 
 // Helper utility to format messages beautifully without raw markdown hashes (#) or stars (**)
-function formatMessageText(text: string) {
+export function formatMessageText(text: string) {
   const lines = text.split("\n");
   return lines.map((line, lineIdx) => {
     let currentLine = line;
@@ -503,13 +457,13 @@ export default function App() {
       localStorage.removeItem("stadiumiq_supervisor_chat");
     }
   }, [supervisorChat]);
-  const [parkingLots, setParkingLots] = useState({
+  const [_parkingLots, _setParkingLots] = useState({
     Blue: 88,
     Green: 42,
     Red: 95,
     Yellow: 12
   });
-  const [restroomStatus, setRestroomStatus] = useState({
+  const [restroomStatus, _setRestroomStatus] = useState({
     "Sec 112": "Low",
     "Sec 204": "High",
     "Gate A": "Medium",
@@ -561,7 +515,7 @@ export default function App() {
   const [isListening, setIsListening] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [wsConnected, setWsConnected] = useState<boolean>(true);
-  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [_alerts, setAlerts] = useState<Alert[]>([]);
   // Real-time FIFA match event feed
   const [liveMatchEvents, setLiveMatchEvents] = useState<{ id: string; team: string; type: string; text: string; time: string; timestamp: string }[]>(() => {
     return [
@@ -572,14 +526,14 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [sessionId] = useState(() => Math.random().toString(36).substring(2, 12));
 
-  const [matches, setMatches] = useState<any[]>([]);
-  const [matchesLoading, setMatchesLoading] = useState(true);
-  const [stadiums, setStadiums] = useState<any[]>([]);
+  const [_matches, setMatches] = useState<MatchData[]>([]);
+  const [_matchesLoading, setMatchesLoading] = useState(true);
+  const [stadiums, setStadiums] = useState<StadiumData[]>([]);
   const [stadiumsLoading, setStadiumsLoading] = useState(true);
   const [findingNearest, setFindingNearest] = useState(false);
   const [gpsError, setGpsError] = useState<string | null>(null);
-  const [teamA, setTeamA] = useState("USA");
-  const [teamB, setTeamB] = useState("Spain");
+  const [_teamA, _setTeamA] = useState("USA");
+  const [_teamB, _setTeamB] = useState("Spain");
 
   // Advanced request control state & refs
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -597,7 +551,7 @@ export default function App() {
     gate_c: 68,
     gate_d: 55
   });
-  const [activeMapFeature, setActiveMapFeature] = useState<any>({
+  const [activeMapFeature, setActiveMapFeature] = useState<MapFeature>({
     type: "gate",
     id: "gate_a",
     name: "Gate A (Main Entry)",
@@ -608,7 +562,7 @@ export default function App() {
   });
 
   // Weather state hooks (real-time keyless Integration)
-  const [weather, setWeather] = useState<any>(null);
+  const [weather, setWeather] = useState<WeatherData | null>(null);
   const [weatherLoading, setWeatherLoading] = useState(false);
 
   // Zoom and pan states for interactive blueprint
@@ -618,26 +572,26 @@ export default function App() {
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
   // Tournament Operations Center (TOC) state variables mapping to challenge verticals
-  const [activeTOCSubTab, setActiveTOCSubTab] = useState<"sustainability" | "transit" | "intelligence">("sustainability");
-  const [binsFill, setBinsFill] = useState<Record<string, number>>({
+  const [_activeTOCSubTab, _setActiveTOCSubTab] = useState<"sustainability" | "transit" | "intelligence">("sustainability");
+  const [_binsFill, setBinsFill] = useState<Record<string, number>>({
     bin_101: 72,
     bin_102: 88,
     bin_103: 45,
     bin_104: 91
   });
-  const [sustainabilityStatus, setSustainabilityStatus] = useState<string>("");
-  const [isSustainabilityLoading, setIsSustainabilityLoading] = useState(false);
-  const [shuttleEgressPhase, setShuttleEgressPhase] = useState<"pre" | "half" | "post">("half");
-  const [shuttleStatus, setShuttleStatus] = useState<string>("");
-  const [isShuttleLoading, setIsShuttleLoading] = useState(false);
+  const [_sustainabilityStatus, _setSustainabilityStatus] = useState<string>("");
+  const [_isSustainabilityLoading, _setIsSustainabilityLoading] = useState(false);
+  const [_shuttleEgressPhase, _setShuttleEgressPhase] = useState<"pre" | "half" | "post">("half");
+  const [_shuttleStatus, _setShuttleStatus] = useState<string>("");
+  const [_isShuttleLoading, _setIsShuttleLoading] = useState(false);
 
   // NEW GLOBAL EMERGENCY OVERRIDE STATE
   const [globalEmergencyOverride, setGlobalEmergencyOverride] = useState<string | null>(null);
   const [newEmergencyMessage, setNewEmergencyMessage] = useState("");
   const [showChat, setShowChat] = useState(false);
-  const [chattingWithStaff, setChattingWithStaff] = useState<any>(null);
+  const [chattingWithStaff, setChattingWithStaff] = useState<StaffMember | null>(null);
   const [expandedImage, setExpandedImage] = useState<{ url: string; category: string; desc: string; location: string } | null>(null);
-  const [zoomImageFailed, setZoomImageFailed] = useState(false);
+  const [_zoomImageFailed, setZoomImageFailed] = useState(false);
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [newStaffName, setNewStaffName] = useState("");
   const [newStaffRole, setNewStaffRole] = useState("Security");
@@ -649,7 +603,7 @@ export default function App() {
   }, [expandedImage]);
 
   // LIVE MATCH STATE (Persisted and auto-updating)
-  const [liveMatchData, setLiveMatchData] = useState(() => {
+  const [_liveMatchData, setLiveMatchData] = useState<LiveMatchData>(() => {
     const now = new Date();
     const isJuly = now.getMonth() === 6 && now.getFullYear() === 2026;
     const date = now.getDate();
@@ -658,7 +612,7 @@ export default function App() {
     const liveDates = [15, 16, 17, 20];
     const hasLiveMatchToday = isJuly && liveDates.includes(date);
 
-    let defaultMatch = { score: "0 - 0", minute: 0, home: "FRA", away: "ESP", status: "Scheduled", matchName: "Match 101" };
+    let defaultMatch: LiveMatchData = { score: "0 - 0", minute: 0, home: "FRA", away: "ESP", status: "Scheduled", matchName: "Match 101" };
 
     if (hasLiveMatchToday) {
       if (date === 15) defaultMatch = { score: "0 - 2", minute: 90, home: "FRA", away: "ESP", status: "FT", matchName: "Match 101" };
@@ -696,7 +650,7 @@ export default function App() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setLiveMatchData((prev: any) => {
+      setLiveMatchData((prev: LiveMatchData) => {
         if (prev.status !== "Live") return prev;
         let newMin = prev.minute + 1;
         let newScore = prev.score;
@@ -730,10 +684,10 @@ export default function App() {
   const [redeemedVouchers, setRedeemedVouchers] = useState<Record<string, boolean>>({});
 
   // PROMO CODE & DISCOUNT STATES
-  const [promoCodeInput, setPromoCodeInput] = useState("");
+  const [_promoCodeInput, _setPromoCodeInput] = useState("");
   const [activeDiscount, setActiveDiscount] = useState(0); // 0.20 for 20%
   const [appliedPromo, setAppliedPromo] = useState<string | null>(null);
-  const [promoError, setPromoError] = useState<string | null>(null);
+  const [_promoError, setPromoError] = useState<string | null>(null);
   const [promoSuccessMessage, setPromoSuccessMessage] = useState<string | null>(null);
   const [copiedPromo, setCopiedPromo] = useState(false);
 
@@ -860,7 +814,7 @@ export default function App() {
   const [newIncidentCat, setNewIncidentCat] = useState<"seat" | "spill" | "gate" | "other">("seat");
   const [newIncidentDesc, setNewIncidentDesc] = useState("");
   const [newIncidentSeverity, setNewIncidentSeverity] = useState<"low" | "medium" | "high">("low");
-  const [staffTasks, setStaffTasks] = useState([
+  const [_staffTasks, _setStaffTasks] = useState([
     { id: 1, text: "Verify sensory kits are fully stocked at Sector 120 ADA desk", completed: true },
     { id: 2, text: "Inspect Gate A biometric turnstile network status", completed: false },
     { id: 3, text: "Calibrate bag scanners at North Gate B", completed: false },
@@ -883,8 +837,8 @@ export default function App() {
       [selectedStadium === "st_mbs" ? "st_mercedes" : selectedStadium]: val
     }));
   };
-  const [volunteerDistance, setVolunteerDistance] = useState(0.2); // km to stadium
-  const [volunteerShiftHours] = useState("08:00 AM - 04:00 PM");
+  const [_volunteerDistance, _setVolunteerDistance] = useState(0.2); // km to stadium
+  const [_volunteerShiftHours] = useState("08:00 AM - 04:00 PM");
 
   const [volunteerOnBreak, setVolunteerOnBreak] = useState(false);
   const [pendingHandshake, setPendingHandshake] = useState<Record<string, boolean>>({});
@@ -899,10 +853,10 @@ export default function App() {
     "Jane Doe: Volunteers, please keep Gate B approach pathways clear."
   ]);
 
-  const [panicModeActive, setPanicModeActive] = useState(false);
-  const [panicCountdown, setPanicCountdown] = useState(5);
-  const [panicDispatched, setPanicDispatched] = useState(false);
-  const [selectedEmergencyCategory, setSelectedEmergencyCategory] = useState<"medical" | "security" | "hazard" | "conflict">("security");
+  const [_panicModeActive, _setPanicModeActive] = useState(false);
+  const [_panicCountdown, _setPanicCountdown] = useState(5);
+  const [_panicDispatched, _setPanicDispatched] = useState(false);
+  const [_selectedEmergencyCategory, _setSelectedEmergencyCategory] = useState<"medical" | "security" | "hazard" | "conflict">("security");
 
   useEffect(() => {
     return onAuthStateChanged(auth, async (currentUser) => {
@@ -911,18 +865,19 @@ export default function App() {
         setLoadingRole(true);
         const userRef = doc(db, "users", currentUser.uid);
         try {
-          const fetchRoleWithRetry = async (retries = 5): Promise<any> => {
+          const fetchRoleWithRetry = async (retries = 5): Promise<import("firebase/firestore").DocumentData | null> => {
             for (let i = 0; i < retries; i++) {
               try {
                 const userSnap = await getDoc(userRef);
                 if (userSnap.exists()) return userSnap.data();
                 return null;
-              } catch (error: any) {
+              } catch (error: unknown) {
                 // Retry on all errors, not just 'unavailable'
                 if (i === retries - 1) throw error;
                 await new Promise(resolve => setTimeout(resolve, 1500 * (i + 1)));
               }
             }
+            return null;
           };
           const userData = await fetchRoleWithRetry();
           if (userData && userData.role) {
@@ -1124,7 +1079,6 @@ export default function App() {
   };
 
   const t = locales[locale];
-  const ui = uiTranslations[locale];
 
   // Fetch matches and stadiums on startup
   useEffect(() => {
@@ -1198,14 +1152,14 @@ export default function App() {
         if (data.success && active) {
           // Map gates array back to our local gate_a, gate_b, gate_c, gate_d format
           const densities: Record<string, number> = {};
-          data.gates.forEach((g: any) => {
+          data.gates.forEach((g: GateData) => {
             const lastChar = g.id.split("_").pop(); // e.g. "a", "b", "c", "d"
-            if (["a", "b", "c", "d"].includes(lastChar)) {
+            if (lastChar && ["a", "b", "c", "d"].includes(lastChar)) {
               densities[`gate_${lastChar}`] = g.current_density;
             }
           });
           if (Object.keys(densities).length > 0) {
-            setSimulatedDensity(densities as any);
+            setSimulatedDensity(densities);
           }
         }
       } catch (err) {
@@ -1281,7 +1235,7 @@ export default function App() {
         }
 
         let minDistance = Infinity;
-        let closest: any = null;
+        let closest: StadiumData | null = null;
 
         stadiums.forEach((s) => {
           const dist = getDistanceKm(latitude, longitude, s.lat, s.lng);
@@ -1340,12 +1294,12 @@ export default function App() {
       setIsListening(true);
     };
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => {
       const transcript = event.results[0][0].transcript;
       setInput(prev => prev ? prev + " " + transcript : transcript);
     };
 
-    recognition.onerror = (event: any) => {
+    recognition.onerror = (event: { error: string }) => {
       console.error("Speech recognition error", event);
       setIsListening(false);
       let errMsg = "";
@@ -1385,156 +1339,7 @@ export default function App() {
     }
   };
 
-  // Compute unique real teams (no placeholders like Winners/Runners-up)
-  const uniqueTeams = useMemo(() => {
-    const teams = new Set<string>();
-    matches.forEach(m => {
-      const h = m.home_team;
-      const a = m.away_team;
-      if (h && !h.includes("Winner") && !h.includes("Runner-up") && !h.includes("Third") && !h.includes("QF") && !h.includes("SF")) {
-        teams.add(h);
-      }
-      if (a && !a.includes("Winner") && !a.includes("Runner-up") && !a.includes("Third") && !a.includes("QF") && !a.includes("SF")) {
-        teams.add(a);
-      }
-    });
-    return Array.from(teams).sort();
-  }, [matches]);
-
   // Win probability predictor calculations
-  const prediction = useMemo(() => {
-    if (!teamA || !teamB || teamA === teamB) {
-      return { probA: 50, probB: 50, probTie: 0, h2hCount: 0, winsA: 0, winsB: 0, draws: 0, formA: 50, formB: 50 };
-    }
-
-    const completedMatches = matches.filter(m => m.status === "completed");
-    const h2h = completedMatches.filter(
-      m => (m.home_team === teamA && m.away_team === teamB) || (m.home_team === teamB && m.away_team === teamA)
-    );
-
-    let winsA = 0;
-    let winsB = 0;
-    let draws = 0;
-
-    h2h.forEach(m => {
-      const hScore = Number(m.home_score);
-      const aScore = Number(m.away_score);
-      if (m.home_team === teamA) {
-        if (hScore > aScore) winsA++;
-        else if (aScore > hScore) winsB++;
-        else draws++;
-      } else {
-        if (hScore > aScore) winsB++;
-        else if (aScore > hScore) winsA++;
-        else draws++;
-      }
-    });
-
-    // Form Win Rate (win is 1, draw is 0.5)
-    const teamAAll = completedMatches.filter(m => m.home_team === teamA || m.away_team === teamA);
-    const teamBAll = completedMatches.filter(m => m.home_team === teamB || m.away_team === teamB);
-
-    let formAVal = 0;
-    teamAAll.forEach(m => {
-      const hScore = Number(m.home_score);
-      const aScore = Number(m.away_score);
-      if (m.home_team === teamA) {
-        if (hScore > aScore) formAVal += 1.0;
-        else if (hScore === aScore) formAVal += 0.5;
-      } else {
-        if (aScore > hScore) formAVal += 1.0;
-        else if (hScore === aScore) formAVal += 0.5;
-      }
-    });
-
-    let formBVal = 0;
-    teamBAll.forEach(m => {
-      const hScore = Number(m.home_score);
-      const aScore = Number(m.away_score);
-      if (m.home_team === teamB) {
-        if (hScore > aScore) formBVal += 1.0;
-        else if (hScore === aScore) formBVal += 0.5;
-      } else {
-        if (aScore > hScore) formBVal += 1.0;
-        else if (hScore === aScore) formBVal += 0.5;
-      }
-    });
-
-    const formA = teamAAll.length > 0 ? Math.round((formAVal / teamAAll.length) * 100) : 50;
-    const formB = teamBAll.length > 0 ? Math.round((formBVal / teamBAll.length) * 100) : 50;
-
-    // Direct probability assessment
-    let probA = 38;
-    let probB = 37;
-    let probTie = 25;
-
-    // Form adjustment
-    const formDiff = (formA - formB) / 100; // ranges -1 to 1
-    probA += Math.round(formDiff * 35);
-    probB -= Math.round(formDiff * 35);
-
-    // H2H weight
-    if (h2h.length > 0) {
-      const h2hA = winsA / h2h.length;
-      const h2hB = winsB / h2h.length;
-      const h2hDraw = draws / h2h.length;
-
-      probA = Math.round(probA * 0.4 + h2hA * 70 * 0.6);
-      probB = Math.round(probB * 0.4 + h2hB * 70 * 0.6);
-      probTie = Math.round(probTie * 0.4 + h2hDraw * 100 * 0.6 + 10);
-    }
-
-    // Safety checks
-    if (probA < 5) probA = 5;
-    if (probB < 5) probB = 5;
-    if (probTie < 5) probTie = 5;
-
-    const total = probA + probB + probTie;
-    const finalA = Math.round((probA / total) * 100);
-    const finalB = Math.round((probB / total) * 100);
-    const finalTie = 100 - finalA - finalB;
-
-    return {
-      probA: finalA,
-      probB: finalB,
-      probTie: finalTie,
-      h2hCount: h2h.length,
-      winsA,
-      winsB,
-      draws,
-      formA,
-      formB
-    };
-  }, [teamA, teamB, matches]);
-
-  // Memoized recent matches for team A (last 3 completed)
-  const recentMatchesA = useMemo(() => {
-    if (!teamA) return [];
-    return matches
-      .filter(m => m.status === "completed" && (m.home_team === teamA || m.away_team === teamA))
-      .sort((a, b) => new Date(b.datetime_utc).getTime() - new Date(a.datetime_utc).getTime())
-      .slice(0, 3);
-  }, [matches, teamA]);
-
-  // Memoized recent matches for team B (last 3 completed)
-  const recentMatchesB = useMemo(() => {
-    if (!teamB) return [];
-    return matches
-      .filter(m => m.status === "completed" && (m.home_team === teamB || m.away_team === teamB))
-      .sort((a, b) => new Date(b.datetime_utc).getTime() - new Date(a.datetime_utc).getTime())
-      .slice(0, 3);
-  }, [matches, teamB]);
-
-  // Memoized head-to-head completed matches between team A and team B
-  const h2hMatches = useMemo(() => {
-    if (!teamA || !teamB || teamA === teamB) return [];
-    return matches
-      .filter(m => m.status === "completed" &&
-        ((m.home_team === teamA && m.away_team === teamB) || (m.home_team === teamB && m.away_team === teamA))
-      )
-      .sort((a, b) => new Date(b.datetime_utc).getTime() - new Date(a.datetime_utc).getTime());
-  }, [matches, teamA, teamB]);
-
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
@@ -1643,7 +1448,7 @@ export default function App() {
     const wsUrl = `${protocol}//${window.location.host}/ws/alerts`;
     
     let ws: WebSocket;
-    let reconnectTimer: any;
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined;
 
     function connect() {
       console.log("[WS] Connecting to operations feed at:", wsUrl);
@@ -1675,7 +1480,7 @@ export default function App() {
                 setSimulatedDensity((prev) => {
                   const next = { ...prev, [key]: data.current_density };
                   if (activeMapFeature && activeMapFeature.type === "gate" && activeMapFeature.id === key) {
-                    setActiveMapFeature((feat: any) => ({
+                    setActiveMapFeature((feat: MapFeature) => ({
                       ...feat,
                       density: data.current_density,
                       status: data.current_density > 80 ? "Highly Congested" : data.current_density > 50 ? "Moderately Congested" : "Clear & Low Density",
@@ -1835,16 +1640,17 @@ export default function App() {
       } else {
         throw new Error("API unsuccessful response");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("[Chat Fetch Error]", err);
       
+      const errorObj = err as Error;
       // If we aborted intentionally on user command, don't show general error
       if (controller.signal.aborted && !loading) {
         return;
       }
 
       let errorMsg = t.server_error;
-      if (err.name === "AbortError") {
+      if (errorObj.name === "AbortError") {
         errorMsg = locale === "es" 
           ? "La solicitud tardó demasiado o fue detenida. Por favor, intente de nuevo." 
           : locale === "fr"
@@ -4596,7 +4402,7 @@ export default function App() {
         <div className="col-span-full grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: "Overall Attendance", value: orgMetrics.attendance, color: "text-white" },
-            { label: "Staff Active", value: `${Object.values(staffFleet).reduce((a: any, b: any) => Number(a) + Number(b), 0)} Deployed`, color: "text-purple-400" },
+            { label: "Staff Active", value: `${Object.values(staffFleet).reduce((a: number, b: number) => a + b, 0)} Deployed`, color: "text-purple-400" },
             { label: "Active Incidents", value: `${incidents.filter(i => i.status !== "resolved").length} Alert Logs`, color: "text-red-500" },
             { label: "Emergency Overrides", value: globalEmergencyOverride ? "1 ACTIVE" : "0 ACTIVE", color: globalEmergencyOverride ? "text-red-500 animate-pulse" : "text-zinc-500" }
           ].map((stat, idx) => (

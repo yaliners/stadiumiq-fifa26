@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { auth, db } from "../lib/firebase";
-import { GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signInAnonymously, createUserWithEmailAndPassword, signInWithCredential, signInWithRedirect, getRedirectResult } from "firebase/auth";
+import { GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, signInAnonymously, createUserWithEmailAndPassword, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import { doc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { User, Shield, Calendar, Heart, Settings, ArrowRight, Check, ExternalLink, FileText, Eye, EyeOff } from "lucide-react";
+import { User, Shield, Calendar, Heart, Settings, ArrowRight, ExternalLink, Eye, EyeOff } from "lucide-react";
 
 interface AuthScreenProps {
-  onAuthSuccess: (role: "staff" | "organizer" | "volunteer" | "fan" | "admin", customUser?: any) => void;
+  onAuthSuccess: (role: "staff" | "organizer" | "volunteer" | "fan" | "admin", customUser?: unknown) => void;
   locale?: string;
 }
 
@@ -34,7 +34,6 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
   const [fanGeneratedOtp, setFanGeneratedOtp] = useState("");
   const [fanNewPassword, setFanNewPassword] = useState("");
   const [fanConfirmPassword, setFanConfirmPassword] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [fanOtpError, setFanOtpError] = useState("");
   const [otpSuccessMessage, setOtpSuccessMessage] = useState("");
@@ -61,7 +60,6 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
     // Generate a 6-digit random code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     setFanGeneratedOtp(code);
-    setOtpSent(true);
     setOtpSuccessMessage(`DEBUG: Verification code [ ${code} ] simulated to ${targetEmail}`);
   };
 
@@ -83,15 +81,16 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
 
     try {
       // Try to register with Firebase Auth
-      let firebaseUser: any = null;
+      let firebaseUser: import("firebase/auth").User | null = null;
       let userUid = "";
       try {
         const result = await createUserWithEmailAndPassword(auth, fanEmail, fanNewPassword);
         firebaseUser = result.user;
         userUid = result.user.uid;
-      } catch (authErr: any) {
+      } catch (authErr: unknown) {
         console.warn("Firebase email creation failed, creating local user session fallback:", authErr);
-        if (authErr.code === "auth/operation-not-allowed") {
+        const errObj = authErr as { code?: string };
+        if (errObj.code === "auth/operation-not-allowed") {
           userUid = `mock-${fanEmail.replace(/[^a-zA-Z0-9]/g, "-")}`;
         } else {
           userUid = `local-fan-${Date.now()}`;
@@ -113,9 +112,10 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
       setOtpVerified(true);
       setShowFanOtpModal(false);
       onAuthSuccess("fan", firebaseUser ? { ...firebaseUser, ...userData } : userData);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error creating account:", err);
-      setFanOtpError(err.message || "Account creation failed.");
+      const errObj = err as Error;
+      setFanOtpError(errObj.message || "Account creation failed.");
     } finally {
       setLoading(false);
     }
@@ -129,23 +129,25 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
     { name: "admin" as const, icon: Settings },
   ];
 
-  const processGoogleLogin = async (result: any, selectedRole: "staff" | "organizer" | "volunteer" | "fan" | "admin") => {
-      const nameParts = (result.user.displayName || "").trim().split(/\s+/);
+  const processGoogleLogin = async (result: import("firebase/auth").UserCredential, selectedRole: "staff" | "organizer" | "volunteer" | "fan" | "admin") => {
+      const nameParts = (result.user?.displayName || "").trim().split(/\s+/);
       const fName = nameParts[0] || "FIFA";
       const lName = nameParts.slice(1).join(" ") || "Fan";
 
       const userData = {
-        email: result.user.email,
-        displayName: result.user.displayName || "FIFA FAN",
+        email: result.user?.email || "",
+        displayName: result.user?.displayName || "FIFA FAN",
         firstName: fName,
         lastName: lName,
-        photoURL: result.user.photoURL || "",
+        photoURL: result.user?.photoURL || "",
         role: selectedRole,
         createdAt: new Date().toISOString(),
       };
 
-      await setDoc(doc(db, "users", result.user.uid), userData, { merge: true });
-      onAuthSuccess(selectedRole, { ...result.user, ...userData });
+      if (result.user?.uid) {
+        await setDoc(doc(db, "users", result.user.uid), userData, { merge: true });
+        onAuthSuccess(selectedRole, { ...result.user, ...userData });
+      }
   };
 
   useEffect(() => {
@@ -155,7 +157,7 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
           setLoading(true);
           try {
             await processGoogleLogin(result, role || "fan");
-          } catch (err: any) {
+          } catch (err: unknown) {
             console.error("Redirect auth error:", err);
             setError("Google sign-in failed. Please try again.");
           } finally {
@@ -163,12 +165,13 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
           }
         }
       })
-      .catch((err: any) => {
+      .catch((err: unknown) => {
         console.error("Redirect error:", err);
-        if (err.code === "auth/unauthorized-domain") {
+        const errObj = err as { code?: string; message?: string };
+        if (errObj.code === "auth/unauthorized-domain") {
           setError("unauthorized-domain: Custom domain is not authorized in Firebase Authentication.");
         } else {
-          setError(err.message || "Google sign-in failed via redirect.");
+          setError(errObj.message || "Google sign-in failed via redirect.");
         }
       });
   }, [auth, role, onAuthSuccess]);
@@ -183,18 +186,20 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
       try {
         const result = await signInWithPopup(auth, provider);
         await processGoogleLogin(result, role || "fan");
-      } catch (popupErr: any) {
+      } catch (popupErr: unknown) {
         console.warn("Popup blocked or failed, attempting redirect:", popupErr);
-        if (popupErr.code === "auth/unauthorized-domain") {
+        const pErr = popupErr as { code?: string };
+        if (pErr.code === "auth/unauthorized-domain") {
           throw popupErr;
         }
         await signInWithRedirect(auth, provider);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Google Auth error:", err);
-      if (err.code === "auth/popup-closed-by-user") {
+      const errObj = err as { code?: string };
+      if (errObj.code === "auth/popup-closed-by-user") {
         setError("Sign-in popup was closed before completion.");
-      } else if (err.code === "auth/unauthorized-domain") {
+      } else if (errObj.code === "auth/unauthorized-domain") {
         setError("unauthorized-domain: Custom domain is not authorized in Firebase Authentication.");
       } else {
         setError("Google sign-in failed. Please try again.");
@@ -210,7 +215,7 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
     const roleParam = params.get("role");
     if (trigger === "true") {
       if (roleParam) {
-        setRole(roleParam as any);
+        setRole(roleParam as "staff" | "organizer" | "volunteer" | "fan" | "admin");
         setStep("login");
       }
       // Remove query parameters immediately to keep URL clean and prevent loops
@@ -235,15 +240,16 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
     setError("");
     try {
       let userUid = "";
-      let firebaseUser: any = null;
+      let firebaseUser: import("firebase/auth").User | null = null;
       try {
         const result = await createUserWithEmailAndPassword(auth, email, "fifa");
         userUid = result.user.uid;
         firebaseUser = result.user;
-      } catch (authErr: any) {
+      } catch (authErr: unknown) {
         console.warn("Firebase Auth registration failed, fallback to local document UID", authErr);
+        const errObj = authErr as { code?: string };
         // If it's specifically operation-not-allowed, we use a custom UID based on email to allow "mock" auth
-        if (authErr.code === "auth/operation-not-allowed") {
+        if (errObj.code === "auth/operation-not-allowed") {
           userUid = `mock-${email.replace(/[^a-zA-Z0-9]/g, "-")}`;
         } else {
           userUid = `local-vol-${Date.now()}`;
@@ -265,12 +271,13 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
       await setDoc(doc(db, "users", userUid), userData, { merge: true });
       setRegUid(userUid);
       setShowVolunteerPasswordModal(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Registration failed:", err);
-      if (err.code === "auth/email-already-in-use") {
+      const errObj = err as { code?: string; message?: string };
+      if (errObj.code === "auth/email-already-in-use") {
         setError("This email is already registered. Please click 'login -->' below to sign in.");
       } else {
-        setError(err.message || "Registration failed.");
+        setError(errObj.message || "Registration failed.");
       }
     } finally {
       setLoading(false);
@@ -331,11 +338,11 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
       try {
         const result = await signInWithEmailAndPassword(auth, targetEmail, password);
         onAuthSuccess(targetRole, result.user);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.warn("Standard login failed, checking fallback for privileged roles or mock auth:", err);
-        
+        const errObj = err as { code?: string };
         // Robust fallback for ALL email/password logins if provider is disabled
-        if (err.code === "auth/operation-not-allowed" || err.code === "auth/invalid-credential" || err.code === "auth/user-not-found") {
+        if (errObj.code === "auth/operation-not-allowed" || errObj.code === "auth/invalid-credential" || errObj.code === "auth/user-not-found") {
           const usersRef = collection(db, "users");
           const q = query(usersRef, where("email", "==", targetEmail));
           const querySnapshot = await getDocs(q);
@@ -366,7 +373,7 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
           setError(locale === "es" ? "Credenciales inválidas o cuenta no encontrada." : "Invalid credentials or account not found.");
         }
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Login failed:", err);
       setError("Login failed. Please verify credentials or use coordinator login.");
     } finally {
@@ -386,10 +393,10 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
       try {
         const result = await signInWithEmailAndPassword(auth, email, password);
         onAuthSuccess("volunteer", result.user);
-      } catch (authErr: any) {
+      } catch (authErr: unknown) {
         console.warn("Firebase volunteer auth failed, searching Firestore for local registration:", authErr);
-        
-        if (authErr.code === "auth/operation-not-allowed" || authErr.code === "auth/invalid-credential" || authErr.code === "auth/user-not-found") {
+        const aErr = authErr as { code?: string };
+        if (aErr.code === "auth/operation-not-allowed" || aErr.code === "auth/invalid-credential" || aErr.code === "auth/user-not-found") {
           const usersRef = collection(db, "users");
           const q = query(usersRef, where("email", "==", email));
           const querySnapshot = await getDocs(q);
@@ -410,7 +417,7 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
         }
         throw authErr;
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Volunteer login failed:", err);
       setError(locale === "es" ? "Error de inicio de sesión de voluntario. Verifique sus credenciales." : "Volunteer login failed. Please check your credentials or use 'fifa' as password.");
     } finally {
@@ -998,8 +1005,9 @@ export function AuthScreen({ onAuthSuccess, locale = "en" }: AuthScreenProps) {
                     }
                     setShowVolunteerPasswordModal(false);
                     onAuthSuccess("volunteer", { uid: regUid, email, role: "volunteer", isLocal: true });
-                  } catch (err: any) {
-                    setVolunteerPasswordError(err.message || "Failed to set password.");
+                  } catch (err: unknown) {
+                    const errObj = err as Error;
+                    setVolunteerPasswordError(errObj.message || "Failed to set password.");
                   } finally {
                     setLoading(false);
                   }

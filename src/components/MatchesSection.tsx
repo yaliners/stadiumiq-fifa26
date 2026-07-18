@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Calendar, CheckCircle, Tv, Activity, Clock, Sparkles, AlertCircle } from "lucide-react";
+import { StadiumData } from "../types";
 
 interface Match {
   id: string;
@@ -22,11 +23,11 @@ interface MatchEvent {
 
 interface MatchesSectionProps {
   selectedStadium: string;
-  stadiums: any[];
+  stadiums: StadiumData[];
   liveMatchEvents?: MatchEvent[];
 }
 
-export function MatchesSection({ selectedStadium, stadiums, liveMatchEvents = [] }: MatchesSectionProps) {
+export function MatchesSection({ selectedStadium, stadiums: _stadiums, liveMatchEvents = [] }: MatchesSectionProps) {
   const [activeTab, setActiveTab] = useState<"pitch" | "stats" | "predict">("pitch");
   const [pollVoted, setPollVoted] = useState<string | null>(() => {
     return localStorage.getItem("fifa_2026_poll_vote");

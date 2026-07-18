@@ -1,13 +1,10 @@
 import express from "express";
 import path from "path";
 import http from "http";
-import fs from "fs";
 import { WebSocketServer, WebSocket } from "ws";
 import { createServer as createViteServer } from "vite";
 import chatRouter from "./server/chat";
 import { getWritableDb, dbAll, dbRun, dbGet, saveDb, getReadOnlyDb } from "./server/db";
-
-import { execSync } from "child_process";
 
 // Startup validation function
 async function validateStartup() {
@@ -52,11 +49,11 @@ async function startServer() {
   });
 
   // Health check endpoints
-  app.get("/health", (req, res) => {
+  app.get("/health", (_req, res) => {
     res.json({ status: "ok" });
   });
 
-  app.get("/api/health", (req, res) => {
+  app.get("/api/health", (_req, res) => {
     res.json({ status: "ok", service: "stadiumiq-backend" });
   });
 
@@ -91,7 +88,7 @@ async function startServer() {
     res.status(401).json({ success: false, error: "Invalid or expired session" });
   });
 
-  app.get("/api/matches", async (req, res) => {
+  app.get("/api/matches", async (_req, res) => {
     try {
       const db = await getWritableDb();
       const matches = dbAll(db, "SELECT m.*, s.name as stadium_name, s.city as stadium_city FROM matches m JOIN stadiums s ON m.stadium_id = s.id ORDER BY m.datetime_utc ASC");
@@ -103,7 +100,7 @@ async function startServer() {
     }
   });
 
-  app.get("/api/stadiums", async (req, res) => {
+  app.get("/api/stadiums", async (_req, res) => {
     try {
       const db = await getWritableDb();
       const stadiums = dbAll(db, "SELECT * FROM stadiums ORDER BY name ASC");
@@ -207,7 +204,7 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
-    app.get("*", (req, res) => {
+    app.get("*", (_req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
@@ -235,7 +232,7 @@ async function startServer() {
       }
     })();
 
-    ws.on("message", (msg) => {
+    ws.on("message", (_msg) => {
       // Stub for client messages if needed
     });
 
@@ -382,7 +379,7 @@ async function startServer() {
   }, 12000); // every 12 seconds
 
   // Global Express Error Handler
-  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     const errorId = Math.random().toString(36).substring(2, 10).toUpperCase();
     console.error(`[GlobalErrorHandler] [ID: ${errorId}] Unhandled server exception:`, err);
     res.status(500).json({

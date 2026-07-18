@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, HarmCategory, HarmBlockThreshold } from "@google/genai";
-import { safeDbQuery, dbAll, dbGet } from "./db";
+import { safeDbQuery, dbAll } from "./db";
 
 // Lazy initialize the Gemini SDK Client to avoid module-load crashes if API key is not present yet
 let aiInstance: GoogleGenAI | null = null;

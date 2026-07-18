@@ -1,5 +1,3 @@
-import fs from "fs";
-
 export async function seedDatabase(db: any): Promise<void> {
   console.log("[Seeder] Seeding database: stadium_ops...");
 
